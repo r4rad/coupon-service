@@ -23,6 +23,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\CouponService.Api\CouponService.Api.csproj" />
     <ProjectReference Include="..\..\src\CouponService.Infrastructure\CouponService.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\OrderApi\OrderApi.csproj">
+      <Aliases>OrderApiHost</Aliases>
+    </ProjectReference>
   </ItemGroup>
 
 </Project>

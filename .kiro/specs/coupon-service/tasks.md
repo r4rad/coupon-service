@@ -57,7 +57,7 @@ Hour figures are focused-work estimates. `[D3]` means inside the committed 2–3
 - [x] 4.5 Auth: JWT bearer, role policies, test token scheme, **startup guard** plus the test that proves it fires _(AC-7.1…AC-7.5, P-8)_ (1.25 h)
 - [x] 4.6 Serilog JSON, correlation middleware, named domain events, redaction _(AC-8.1…AC-8.4)_ (1 h)
 - [x] 4.7 Health endpoints `/live` and `/ready` (0.25 h)
-- [ ] 4.8 Order API: catalog from `data/pizzas.json`, `POST /orders`, reserve then confirm, client total discarded _(AC-5.1…AC-5.4)_ (1 h)
+- [x] 4.8 Order API: catalog from `data/pizzas.json`, `POST /orders`, reserve then confirm, client total discarded _(AC-5.1…AC-5.4)_ (1 h)
 - [ ] 4.9 `WebApplicationFactory` contract tests: 200-with-rejection, 400 shapes, 401, 403 (0.5 h)
 
 ## Wave 5 — BDD suite (depends: Wave 4) · 3 h `[D3]`
