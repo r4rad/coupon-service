@@ -1,6 +1,31 @@
+using OrderApi.Auth;
+using OrderApi.Catalog;
+using OrderApi.Clients;
 using OrderApi.OpenApi;
+using OrderApi.Options;
+using OrderApi.Orders;
+using OrderApi.Services;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddOptions<OrderApiOptions>()
+    .Bind(builder.Configuration.GetSection(OrderApiOptions.SectionName))
+    .Validate(options => !string.IsNullOrWhiteSpace(options.CouponServiceBaseUrl), "CouponServiceBaseUrl is required")
+    .ValidateOnStart();
+
+builder.Services.AddSingleton<IPizzaCatalog, FilePizzaCatalog>();
+builder.Services.AddSingleton<IOrderRepository, InMemoryOrderRepository>();
+builder.Services.AddSingleton<IClock, SystemClock>();
+builder.Services.AddSingleton<ICouponServiceTokenProvider, ConfigurationCouponServiceTokenProvider>();
+builder.Services.AddSingleton<IOrderCheckoutService, OrderCheckoutService>();
+
+builder.Services.AddHttpClient<ICouponServiceClient, HttpCouponServiceClient>((serviceProvider, client) =>
+{
+    var options = serviceProvider.GetRequiredService<IOptions<OrderApiOptions>>().Value;
+    client.BaseAddress = new Uri(options.CouponServiceBaseUrl.TrimEnd('/') + "/");
+    client.Timeout = TimeSpan.FromSeconds(3);
+});
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi(options =>
@@ -24,9 +49,8 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 }
 
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
-
 app.Run();
+
+public partial class Program;

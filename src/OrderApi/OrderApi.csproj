@@ -11,6 +11,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="..\..\data\pizzas.json">
+      <Link>data\pizzas.json</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.Extensions.ApiDescription.Server">
       <PrivateAssets>all</PrivateAssets>
