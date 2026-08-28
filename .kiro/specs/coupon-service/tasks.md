@@ -38,7 +38,7 @@ Hour figures are focused-work estimates. `[D3]` means inside the committed 2–3
 - [x] 2.4 `bestOf` and `sum` handlers _(AC-2.8)_ (0.75 h)
 - [x] 2.5 `cheapestFree`, `nthItem`, `tiered` handlers _(AC-2.2, P-2)_ (1.25 h)
 - [x] 2.6 `PriceCalculator` producing a breakdown from a decision _(AC-1.1)_ (0.5 h)
-- [ ] 2.7 Property-based tests: discount never negative, never above eligible base, allocations always sum to total _(AC-10.3)_ (0.5 h)
+- [x] 2.7 Property-based tests: discount never negative, never above eligible base, allocations always sum to total _(AC-10.3)_ (0.5 h)
 
 ## Wave 3 — Application services and redemption (depends: Wave 2) · 5 h `[D3]`
 
