@@ -1,0 +1,26 @@
+{
+  "_type": "environment",
+  "_id": "env_local",
+  "parentId": "env_base",
+  "name": "Local",
+  "data": {
+    "coupon_base_url": "http://localhost:5174",
+    "order_base_url": "http://localhost:5043",
+    "customer_token": "",
+    "admin_token": "",
+    "redeem_token": "",
+    "correlation_id": "insomnia-local-001"
+  },
+  "dataPropertyOrder": {
+    "&": [
+      "coupon_base_url",
+      "order_base_url",
+      "customer_token",
+      "admin_token",
+      "redeem_token",
+      "correlation_id"
+    ]
+  },
+  "color": "#7d69cb",
+  "isPrivate": false
+}

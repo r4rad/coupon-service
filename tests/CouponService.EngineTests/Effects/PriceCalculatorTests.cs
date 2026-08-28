@@ -26,7 +26,7 @@ public sealed class PriceCalculatorTests
 
         var breakdown = new PriceCalculator().Calculate(
             cart,
-            new PolicyDecision(CouponStatus.Applied, plan));
+            PolicyDecision.Applied(plan, "test-hash"));
 
         Assert.Equal(31.00m, breakdown.Subtotal);
         Assert.Equal(3.10m, breakdown.Discount);
@@ -46,7 +46,7 @@ public sealed class PriceCalculatorTests
         var cart = EffectsTestHelper.CreateSingleLineCart(12.00m);
         var breakdown = new PriceCalculator().Calculate(
             cart,
-            new PolicyDecision(CouponStatus.Rejected, null));
+            PolicyDecision.Rejected(RejectionReason.MinimumOrderNotMet, "test-hash"));
 
         Assert.Equal(12.00m, breakdown.Subtotal);
         Assert.Equal(0m, breakdown.Discount);

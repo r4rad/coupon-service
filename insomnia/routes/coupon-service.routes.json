@@ -1,0 +1,288 @@
+{
+  "folders": [
+    {
+      "name": "Preview",
+      "description": "Advisory pricing — never writes (AC-1.6).",
+      "routes": [
+        {
+          "name": "POST /v1/coupons/preview — SAVE10 applied",
+          "method": "POST",
+          "path": "/v1/coupons/preview",
+          "description": "AC-1.1: valid coupon returns subtotal, discount, total, and per-line allocations.",
+          "auth": "customer",
+          "body": {
+            "code": "SAVE10",
+            "customerId": "customer-1",
+            "cart": {
+              "lines": [
+                {
+                  "lineId": "line-1",
+                  "pizzaId": "margherita",
+                  "category": "classic",
+                  "unitPrice": 9.50,
+                  "quantity": 2
+                },
+                {
+                  "lineId": "line-2",
+                  "pizzaId": "bbq-chicken",
+                  "category": "meat",
+                  "unitPrice": 12.00,
+                  "quantity": 1
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /v1/coupons/preview — minimum not met",
+          "method": "POST",
+          "path": "/v1/coupons/preview",
+          "description": "AC-1.2 / AC-1.3: HTTP 200 with status Rejected, reason, near-miss hint, full-price breakdown.",
+          "auth": "customer",
+          "body": {
+            "code": "MIN25",
+            "customerId": "customer-1",
+            "cart": {
+              "lines": [
+                {
+                  "lineId": "line-1",
+                  "pizzaId": "margherita",
+                  "category": "classic",
+                  "unitPrice": 21.90,
+                  "quantity": 1
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /v1/coupons/preview — expired coupon",
+          "method": "POST",
+          "path": "/v1/coupons/preview",
+          "description": "HTTP 200 with reason Expired — rejection is a business outcome, not an error.",
+          "auth": "customer",
+          "body": {
+            "code": "OLDCODE",
+            "customerId": "customer-1",
+            "cart": {
+              "lines": [
+                {
+                  "lineId": "line-1",
+                  "pizzaId": "margherita",
+                  "category": "classic",
+                  "unitPrice": 31.00,
+                  "quantity": 1
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "description": "Liveness and readiness probes.",
+      "routes": [
+        {
+          "name": "GET /v1/health/live",
+          "method": "GET",
+          "path": "/v1/health/live",
+          "description": "Anonymous liveness probe.",
+          "auth": "none"
+        },
+        {
+          "name": "GET /v1/health/ready",
+          "method": "GET",
+          "path": "/v1/health/ready",
+          "description": "Readiness probe — includes policy repository check.",
+          "auth": "none"
+        }
+      ]
+    },
+    {
+      "name": "Reservations",
+      "description": "Internal ingress only — requires Coupon.Redeem (Order API managed identity).",
+      "routes": [
+        {
+          "name": "POST /v1/reservations — reserve",
+          "method": "POST",
+          "path": "/v1/reservations",
+          "description": "Authoritative re-price and reserve.",
+          "auth": "redeem",
+          "body": {
+            "code": "SAVE10",
+            "orderId": "order-001",
+            "customerId": "customer-1",
+            "cart": {
+              "lines": [
+                {
+                  "lineId": "line-1",
+                  "pizzaId": "margherita",
+                  "category": "classic",
+                  "unitPrice": 9.50,
+                  "quantity": 2
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /v1/reservations/{orderId}/confirm",
+          "method": "POST",
+          "path": "/v1/reservations/order-001/confirm",
+          "description": "Confirm reservation — idempotent.",
+          "auth": "redeem"
+        },
+        {
+          "name": "POST /v1/reservations/{orderId}/release",
+          "method": "POST",
+          "path": "/v1/reservations/order-001/release",
+          "description": "Release reservation — idempotent.",
+          "auth": "redeem",
+          "body": {
+            "reason": "payment_failed"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin — Policies",
+      "description": "Requires Coupon.Admin role.",
+      "routes": [
+        {
+          "name": "GET /v1/admin/policies",
+          "method": "GET",
+          "path": "/v1/admin/policies",
+          "description": "List policies.",
+          "auth": "admin"
+        },
+        {
+          "name": "POST /v1/admin/policies",
+          "method": "POST",
+          "path": "/v1/admin/policies",
+          "description": "Create policy — validated against engine manifest.",
+          "auth": "admin",
+          "body": {
+            "policyId": "save10",
+            "code": "SAVE10",
+            "trigger": "code",
+            "status": "Active",
+            "engineSchema": "1.0",
+            "condition": {
+              "gte": [
+                { "fact": "cart.subtotal" },
+                0
+              ]
+            },
+            "effect": {
+              "percentage": {
+                "value": 10,
+                "of": {
+                  "lines": {
+                    "where": {
+                      "gte": [
+                        { "fact": "line.quantity" },
+                        1
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /v1/admin/policies/{policyId}",
+          "method": "GET",
+          "path": "/v1/admin/policies/save10",
+          "description": "Read a policy by id.",
+          "auth": "admin"
+        },
+        {
+          "name": "PUT /v1/admin/policies/{policyId}",
+          "method": "PUT",
+          "path": "/v1/admin/policies/save10",
+          "description": "Update policy — requires If-Match ETag header.",
+          "auth": "admin",
+          "headers": [
+            {
+              "name": "If-Match",
+              "value": "\"1\""
+            }
+          ],
+          "body": {
+            "policyId": "save10",
+            "code": "SAVE10",
+            "status": "Active",
+            "engineSchema": "1.0"
+          }
+        },
+        {
+          "name": "DELETE /v1/admin/policies/{policyId}",
+          "method": "DELETE",
+          "path": "/v1/admin/policies/save10",
+          "description": "Archive policy (soft delete).",
+          "auth": "admin"
+        },
+        {
+          "name": "POST /v1/admin/policies/{policyId}/simulate",
+          "method": "POST",
+          "path": "/v1/admin/policies/save10/simulate",
+          "description": "Dry run against a sample cart — returns trace.",
+          "auth": "admin",
+          "body": {
+            "code": "SAVE10",
+            "customerId": "customer-1",
+            "cart": {
+              "lines": [
+                {
+                  "lineId": "line-1",
+                  "pizzaId": "margherita",
+                  "category": "classic",
+                  "unitPrice": 31.00,
+                  "quantity": 1
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /v1/admin/policies/{policyId}/status",
+          "method": "POST",
+          "path": "/v1/admin/policies/save10/status",
+          "description": "Promote lifecycle: Draft, Shadow, Active, Paused, Archived.",
+          "auth": "admin",
+          "body": {
+            "status": "Active"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Policy Engine",
+      "description": "Engine manifest for admin tooling.",
+      "routes": [
+        {
+          "name": "GET /v1/policy-engine/manifest",
+          "method": "GET",
+          "path": "/v1/policy-engine/manifest",
+          "description": "Facts, operators, effects, and limits.",
+          "auth": "admin"
+        }
+      ]
+    },
+    {
+      "name": "OpenAPI",
+      "description": "Generated OpenAPI document from the running API.",
+      "routes": [
+        {
+          "name": "GET /openapi/v1.json",
+          "method": "GET",
+          "path": "/openapi/v1.json",
+          "description": "Live OpenAPI JSON while running in Development.",
+          "auth": "none"
+        }
+      ]
+    }
+  ]
+}
