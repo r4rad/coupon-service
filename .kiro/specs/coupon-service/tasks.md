@@ -52,7 +52,7 @@ Hour figures are focused-work estimates. `[D3]` means inside the committed 2–3
 
 - [x] 4.1 API host, DI wiring, options binding, OpenAPI (0.75 h)
 - [x] 4.2 Preview endpoint, problem+json, closed rejection-reason enum _(AC-1.2)_ (1 h)
-- [ ] 4.3 Reservations endpoints _(AC-4.1…AC-4.3)_ (0.75 h)
+- [x] 4.3 Reservations endpoints _(AC-4.1…AC-4.3)_ (0.75 h)
 - [ ] 4.4 Admin endpoints: create and list with manifest validation, read, update with ETag, archive on delete _(AC-6.1, AC-6.3, AC-6.4)_ (1.5 h)
 - [ ] 4.5 Auth: JWT bearer, role policies, test token scheme, **startup guard** plus the test that proves it fires _(AC-7.1…AC-7.5, P-8)_ (1.25 h)
 - [ ] 4.6 Serilog JSON, correlation middleware, named domain events, redaction _(AC-8.1…AC-8.4)_ (1 h)

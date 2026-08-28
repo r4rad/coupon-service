@@ -36,6 +36,7 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<ICouponValidator, CouponValidator>();
         services.AddSingleton<IPriceCalculator, PriceCalculator>();
         services.AddSingleton<ICouponPreviewService, CouponPreviewService>();
+        services.AddSingleton<ICouponRedeemer, CouponRedeemer>();
         services.AddSingleton<IAutomaticPolicyIndex, AutomaticPolicyIndex>();
         services.AddSingleton<IPolicyCandidateResolver, PolicyCandidateResolver>();
         services.AddSingleton<IAutomaticPolicyPreviewService, AutomaticPolicyPreviewService>();
