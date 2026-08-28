@@ -1,3 +1,5 @@
+using CouponService.Engine.Evaluation;
+
 namespace CouponService.Engine.Facts;
 
 public interface IFactRegistry

@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using CouponService.Domain;
+using CouponService.Engine.Evaluation;
 using CouponService.Engine.Facts;
 
 namespace CouponService.EngineTests.Facts;
@@ -17,16 +18,15 @@ internal static class FactTestData
     {
         var clock = new FixedClock(utcNow ?? new DateTimeOffset(2026, 8, 28, 15, 0, 0, TimeSpan.Zero));
 
-        return new EvalScope
-        {
-            Clock = clock,
-            Cart = cart ?? CreateSampleCart(),
-            CurrentLine = currentLine,
-            ConfirmedOrderCount = confirmedOrderCount,
-            IsFirstOrder = isFirstOrder,
-            CouponUsesTotal = couponUsesTotal,
-            CouponUsesByCustomer = couponUsesByCustomer,
-        };
+        return EvalScope.Create(
+            clock,
+            cart ?? CreateSampleCart(),
+            StandardFactVocabulary.Create(),
+            currentLine: currentLine,
+            confirmedOrderCount: confirmedOrderCount,
+            isFirstOrder: isFirstOrder,
+            couponUsesTotal: couponUsesTotal,
+            couponUsesByCustomer: couponUsesByCustomer);
     }
 
     internal static Cart CreateSampleCart() =>
