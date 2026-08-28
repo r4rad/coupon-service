@@ -11,6 +11,8 @@ public sealed class InMemoryPolicyRepository : IPolicyRepository
 
     public int WriteCount { get; private set; }
 
+    public int AutomaticQueryCount { get; private set; }
+
     public Task<PolicyRecord?> GetByCodeAsync(string code, CancellationToken cancellationToken = default) =>
         GetByPartitionKeyAsync(code, cancellationToken);
 
@@ -69,6 +71,26 @@ public sealed class InMemoryPolicyRepository : IPolicyRepository
             _policies[policy.PartitionKey] = stored;
             WriteCount++;
             return Task.FromResult(stored.ToRecord());
+        }
+    }
+
+    public Task<IReadOnlyList<PolicyRecord>> ListAutomaticAsync(
+        CancellationToken cancellationToken = default)
+    {
+        lock (_gate)
+        {
+            AutomaticQueryCount++;
+            var matches = _policies.Values
+                .Select(stored => stored.ToRecord())
+                .Where(policy => policy.Trigger is PolicyTrigger.Automatic)
+                .Where(policy =>
+                {
+                    var status = PolicyDocumentMetadata.ReadStatus(policy.DocumentJson);
+                    return status is PolicyStatus.Active or PolicyStatus.Shadow;
+                })
+                .ToList();
+
+            return Task.FromResult<IReadOnlyList<PolicyRecord>>(matches);
         }
     }
 
