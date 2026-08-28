@@ -22,7 +22,7 @@ internal static class PricingPropertyEvaluator
         var plan = scope.Applier.Apply(document.RootElement, scope);
         var breakdown = Calculator.Calculate(
             cart,
-            new PolicyDecision(CouponStatus.Applied, plan));
+            PolicyDecision.Applied(plan, "property-test"));
 
         return (plan, breakdown);
     }

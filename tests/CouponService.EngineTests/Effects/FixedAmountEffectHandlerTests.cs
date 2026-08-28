@@ -19,9 +19,7 @@ public sealed class FixedAmountEffectHandlerTests
 
         var breakdown = new CouponService.Application.Pricing.PriceCalculator().Calculate(
             cart,
-            new CouponService.Application.Pricing.PolicyDecision(
-                CouponService.Application.Pricing.CouponStatus.Applied,
-                plan));
+            CouponService.Application.Pricing.PolicyDecision.Applied(plan, "test-hash"));
 
         Assert.Equal(0m, breakdown.Total);
         Assert.Equal(3.00m, breakdown.Discount);
