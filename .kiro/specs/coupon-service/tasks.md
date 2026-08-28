@@ -32,12 +32,12 @@ Hour figures are focused-work estimates. `[D3]` means inside the committed 2–3
 
 ## Wave 2 — Effects and pricing (depends: 1.8, 1.9) · 5 h `[D3]`
 
-- [ ] 2.1 Selector evaluation and `EffectScope` (0.5 h)
-- [ ] 2.2 `percentage` and `fixedAmount` handlers _(AC-1.4)_ (0.75 h)
-- [ ] 2.3 `cap` with proportional allocation rescale and re-rounding _(AC-2.9)_ (0.75 h)
-- [ ] 2.4 `bestOf` and `sum` handlers _(AC-2.8)_ (0.75 h)
+- [x] 2.1 Selector evaluation and `EffectScope` (0.5 h)
+- [x] 2.2 `percentage` and `fixedAmount` handlers _(AC-1.4)_ (0.75 h)
+- [x] 2.3 `cap` with proportional allocation rescale and re-rounding _(AC-2.9)_ (0.75 h)
+- [x] 2.4 `bestOf` and `sum` handlers _(AC-2.8)_ (0.75 h)
 - [ ] 2.5 `cheapestFree`, `nthItem`, `tiered` handlers _(AC-2.2, P-2)_ (1.25 h)
-- [ ] 2.6 `PriceCalculator` producing a breakdown from a decision _(AC-1.1)_ (0.5 h)
+- [x] 2.6 `PriceCalculator` producing a breakdown from a decision _(AC-1.1)_ (0.5 h)
 - [ ] 2.7 Property-based tests: discount never negative, never above eligible base, allocations always sum to total _(AC-10.3)_ (0.5 h)
 
 ## Wave 3 — Application services and redemption (depends: Wave 2) · 5 h `[D3]`
