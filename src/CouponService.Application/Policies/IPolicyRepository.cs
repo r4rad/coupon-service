@@ -12,4 +12,7 @@ public interface IPolicyRepository
         PolicyRecord policy,
         string ifMatchEtag,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<PolicyRecord>> ListAutomaticAsync(
+        CancellationToken cancellationToken = default);
 }
