@@ -1,0 +1,9 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Order API",
+    "description": "Checkout stand-in for the pizza ordering platform.",
+    "version": "v1"
+  },
+  "paths": { }
+}

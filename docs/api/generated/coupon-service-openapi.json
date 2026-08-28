@@ -1,0 +1,9 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Coupon Service API",
+    "description": "Coupon validation, pricing preview, redemption lifecycle, and policy administration.",
+    "version": "v1"
+  },
+  "paths": { }
+}

@@ -1,6 +1,8 @@
-@CouponService.Api_HostAddress = http://localhost:5174
-
-GET {{CouponService.Api_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
+# Insomnia is the API client for this project.
+# Import: insomnia/coupon-service.insomnia.json  (regenerated on dotnet build)
+# Docs:    docs/api/README.md
+#
+# Start the API:
+#   dotnet run --project src/CouponService.Api
+#
+# Local base URL (http profile): http://localhost:5174

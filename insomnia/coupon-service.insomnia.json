@@ -1,0 +1,67 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-08-28T13:43:37.1617695Z",
+  "__export_source": "OpenApiInsomniaSync",
+  "resources": [
+    {
+      "_type": "workspace",
+      "_id": "wrk_coupon_service",
+      "name": "Coupon Service",
+      "description": "Auto-generated from OpenAPI on dotnet build.\n\nSource specs: docs/api/generated/*-openapi.json\nEnvironment: insomnia/environments/local.json\n\nDo not hand-edit coupon-service.insomnia.json \u2014 run dotnet build or scripts/sync-insomnia-from-openapi.ps1."
+    },
+    {
+      "_type": "environment",
+      "_id": "env_base",
+      "parentId": "wrk_coupon_service",
+      "name": "Base Environment",
+      "data": {},
+      "color": null,
+      "isPrivate": false
+    },
+    {
+      "_type": "environment",
+      "_id": "env_local",
+      "parentId": "env_base",
+      "name": "Local",
+      "data": {
+        "coupon_base_url": "http://localhost:5174",
+        "order_base_url": "http://localhost:5043",
+        "customer_token": "",
+        "admin_token": "",
+        "redeem_token": "",
+        "correlation_id": "insomnia-local-001"
+      },
+      "dataPropertyOrder": {
+        "\u0026": [
+          "coupon_base_url",
+          "order_base_url",
+          "customer_token",
+          "admin_token",
+          "redeem_token",
+          "correlation_id"
+        ]
+      },
+      "color": "#7d69cb",
+      "isPrivate": false
+    },
+    {
+      "_type": "request_group",
+      "_id": "8ae67deee5a6",
+      "parentId": "wrk_coupon_service",
+      "name": "Coupon Service",
+      "description": "Generated from coupon-service-openapi.json. Re-import this workspace after dotnet build to refresh.",
+      "environment": {},
+      "metaSortKey": -1000
+    },
+    {
+      "_type": "request_group",
+      "_id": "f66037cadff0",
+      "parentId": "wrk_coupon_service",
+      "name": "Order API",
+      "description": "Generated from order-api-openapi.json. Re-import this workspace after dotnet build to refresh.",
+      "environment": {},
+      "metaSortKey": -900
+    }
+  ]
+}

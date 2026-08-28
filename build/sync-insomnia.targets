@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <Target Name="SyncInsomniaFromOpenApi"
+          AfterTargets="GenerateOpenApiDocuments"
+          Condition="'$(SyncInsomniaOnBuild)' == 'true' AND '$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <_RepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../..'))</_RepoRoot>
+      <_SyncScript>$(_RepoRoot)/scripts/sync-insomnia-from-openapi.ps1</_SyncScript>
+    </PropertyGroup>
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(_SyncScript)&quot; &quot;$(_RepoRoot)&quot;"
+          Condition="Exists('$(_SyncScript)')"
+          StandardOutputImportance="High" />
+  </Target>
+</Project>
