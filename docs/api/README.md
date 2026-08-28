@@ -1,27 +1,44 @@
 # API testing with Insomnia
 
-[Insomnia](https://insomnia.rest/) is the API client for this repository. Request collections are **generated automatically from the code** whenever you build an API project.
+[Insomnia](https://insomnia.rest/) is the API client for this repository.
 
-## Quick start
+**Want Swagger / Redoc-style browsing inside Insomnia?** See **[insomnia-swagger-redoc-guide.md](./insomnia-swagger-redoc-guide.md)**.
+
+## Quick start (try it out)
 
 1. Install Insomnia.
-2. Build the solution (generates the workspace):
+2. Build the solution:
 
    ```powershell
    dotnet build CouponService.slnx
    ```
 
-3. Import the workspace:
-   - **File → Import → From File**
-   - Choose `insomnia/coupon-service.insomnia.json`
-4. Select the **Local** environment.
-5. Start the API:
+3. Import for **documentation preview** (Swagger / Redoc-like):
+   - **Import → From File →** `insomnia/coupon-service-design.insomnia.json`
+   - Choose **Design Document**
+   - Open the **Design** tab
+
+4. Import for **ready-made requests**:
+   - **Import → From File →** `insomnia/coupon-service.insomnia.json`
+   - Choose **Request Collection**
+
+5. Select the **Local** environment.
+6. Start the API:
 
    ```powershell
    dotnet run --project src/CouponService.Api
    ```
 
-6. Send requests from the generated folders (**Coupon Service**, **Order API**).
+7. **Design tab** to browse · **Debug / Collection** to **Send**
+
+## Generated files
+
+| File | Import as |
+|---|---|
+| `insomnia/coupon-service-design.insomnia.json` | Design Document (preview) |
+| `insomnia/order-api-design.insomnia.json` | Design Document (preview) |
+| `insomnia/coupon-service.insomnia.json` | Request Collection (Send) |
+| `docs/api/generated/*-openapi.json` | Design Document (alternative) |
 
 ## How auto-sync works
 
@@ -29,11 +46,17 @@
 Controllers / minimal APIs in code
         ↓  dotnet build
 docs/api/generated/*-openapi.json     ← build-time OpenAPI (Microsoft.Extensions.ApiDescription.Server)
+insomnia/routes/*.routes.json         ← dedicated /v1 routes (folders, examples, auth)
         ↓  scripts/sync-insomnia-from-openapi.ps1
-insomnia/coupon-service.insomnia.json ← Insomnia workspace (requests + docs)
+insomnia/coupon-service.insomnia.json ← Insomnia workspace (organized requests + docs)
 ```
 
-**When you add a new endpoint**, rebuild and refresh Insomnia:
+**Dedicated routes** live in `insomnia/routes/` — one JSON file per service. Each file defines folders (Preview, Health, Admin, …) and named requests with method, path, auth, and example body. The sync tool merges these into both the Insomnia collection and the design-document OpenAPI preview.
+
+**When you add a new endpoint**, either:
+
+1. Add a route to `insomnia/routes/coupon-service.routes.json` (or `order-api.routes.json`) for a ready-made Insomnia request with examples, then rebuild; or
+2. Implement the endpoint in code so it appears in generated OpenAPI, then rebuild.
 
 ```powershell
 dotnet build CouponService.slnx
@@ -56,8 +79,12 @@ GET http://localhost:5174/openapi/v1.json
 
 | Path | Edit by hand? | Purpose |
 |---|---|---|
-| `insomnia/coupon-service.insomnia.json` | **No** — generated | Import into Insomnia |
+| `insomnia/coupon-service.insomnia.json` | **No** — generated | Request collection (Send) |
+| `insomnia/coupon-service-design.insomnia.json` | **No** — generated | Design document (Swagger/Redoc preview) |
+| `insomnia/order-api-design.insomnia.json` | **No** — generated | Order API design document |
 | `insomnia/environments/local.json` | **Yes** | Local URLs and tokens (preserved on sync) |
+| `insomnia/routes/coupon-service.routes.json` | **Yes** | Dedicated Coupon Service routes (folders + examples) |
+| `insomnia/routes/order-api.routes.json` | **Yes** | Dedicated Order API routes |
 | `docs/api/generated/*.openapi.json` | **No** — generated | OpenAPI contract from code |
 | `tools/OpenApiInsomniaSync/` | Yes | Generator that merges OpenAPI → Insomnia |
 | `scripts/sync-insomnia-from-openapi.ps1` | Yes | Manual sync entry point |
@@ -82,6 +109,28 @@ Edit `insomnia/environments/local.json`:
 | `correlation_id` | `insomnia-local-001` | `X-Correlation-Id` header |
 
 Sync preserves this file; it is merged into the generated workspace on every build.
+
+## Adding a dedicated route
+
+Edit `insomnia/routes/coupon-service.routes.json` (or `order-api.routes.json`). Each folder groups related requests:
+
+```json
+{
+  "name": "Preview",
+  "description": "Advisory pricing — never writes.",
+  "routes": [
+    {
+      "name": "POST /v1/coupons/preview — SAVE10 applied",
+      "method": "POST",
+      "path": "/v1/coupons/preview",
+      "auth": "customer",
+      "body": { "code": "SAVE10", "customerId": "customer-1", "cart": { "lines": [] } }
+    }
+  ]
+}
+```
+
+`auth` values: `customer`, `admin`, `redeem`, or `none`. Rebuild to regenerate Insomnia files.
 
 ## Contract reminders
 

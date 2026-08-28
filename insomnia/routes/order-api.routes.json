@@ -1,0 +1,71 @@
+{
+  "folders": [
+    {
+      "name": "Catalog",
+      "description": "Pizza catalog from data/pizzas.json.",
+      "routes": [
+        {
+          "name": "GET /v1/pizzas",
+          "method": "GET",
+          "path": "/v1/pizzas",
+          "description": "List available pizzas.",
+          "auth": "customer"
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "description": "Checkout stand-in — calls Coupon Service reserve then confirm.",
+      "routes": [
+        {
+          "name": "POST /v1/orders — checkout with coupon",
+          "method": "POST",
+          "path": "/v1/orders",
+          "description": "Submit order; client total is discarded — server re-prices authoritatively.",
+          "auth": "customer",
+          "body": {
+            "couponCode": "SAVE10",
+            "cart": {
+              "lines": [
+                {
+                  "lineId": "line-1",
+                  "pizzaId": "margherita",
+                  "category": "classic",
+                  "unitPrice": 9.50,
+                  "quantity": 2
+                },
+                {
+                  "lineId": "line-2",
+                  "pizzaId": "bbq-chicken",
+                  "category": "meat",
+                  "unitPrice": 12.00,
+                  "quantity": 1
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /v1/orders/{orderId}",
+          "method": "GET",
+          "path": "/v1/orders/order-001",
+          "description": "Read order by id.",
+          "auth": "customer"
+        }
+      ]
+    },
+    {
+      "name": "OpenAPI",
+      "description": "Generated OpenAPI document from the running API.",
+      "routes": [
+        {
+          "name": "GET /openapi/v1.json",
+          "method": "GET",
+          "path": "/openapi/v1.json",
+          "description": "Live OpenAPI JSON while running in Development.",
+          "auth": "none"
+        }
+      ]
+    }
+  ]
+}

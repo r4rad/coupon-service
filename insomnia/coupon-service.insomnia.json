@@ -1,14 +1,14 @@
 {
   "_type": "export",
   "__export_format": 4,
-  "__export_date": "2026-08-28T13:43:37.1617695Z",
+  "__export_date": "2026-08-28T14:06:30.3256606Z",
   "__export_source": "OpenApiInsomniaSync",
   "resources": [
     {
       "_type": "workspace",
       "_id": "wrk_coupon_service",
       "name": "Coupon Service",
-      "description": "Auto-generated from OpenAPI on dotnet build.\n\nSource specs: docs/api/generated/*-openapi.json\nEnvironment: insomnia/environments/local.json\n\nDo not hand-edit coupon-service.insomnia.json \u2014 run dotnet build or scripts/sync-insomnia-from-openapi.ps1."
+      "description": "Auto-generated from OpenAPI on dotnet build.\n\nSwagger / Redoc-style browsing: import insomnia/*-design.insomnia.json as a Design Document.\nTry-it-out requests: use the Coupon Service / Order API folders below.\n\nRegenerate: dotnet build or scripts/sync-insomnia-from-openapi.ps1"
     },
     {
       "_type": "environment",
@@ -47,21 +47,720 @@
     },
     {
       "_type": "request_group",
+      "_id": "fld_documentation",
+      "parentId": "wrk_coupon_service",
+      "name": "Documentation (Swagger / Redoc preview)",
+      "description": "Open these design specs in Insomnia for a rendered OpenAPI preview.\n\nImport each *-design.insomnia.json file as a Design Document, then use the Design tab.\nFrom the design document: Settings \u2192 Generate collection \u2192 Debug tab to send requests.",
+      "environment": {},
+      "metaSortKey": -1100
+    },
+    {
+      "_type": "api_spec",
+      "_id": "4ae492e33c70",
+      "parentId": "fld_documentation",
+      "fileName": "coupon-service-openapi.json",
+      "contentType": "json",
+      "contents": "{\r\n  \u0022openapi\u0022: \u00223.1.1\u0022,\r\n  \u0022info\u0022: {\r\n    \u0022title\u0022: \u0022Coupon Service API\u0022,\r\n    \u0022description\u0022: \u0022Coupon validation, pricing preview, redemption lifecycle, and policy administration.\u0022,\r\n    \u0022version\u0022: \u0022v1\u0022\r\n  },\r\n  \u0022paths\u0022: {\r\n    \u0022/v1/coupons/preview\u0022: {\r\n      \u0022post\u0022: {\r\n        \u0022summary\u0022: \u0022POST /v1/coupons/preview \\u2014 SAVE10 applied\u0022,\r\n        \u0022operationId\u0022: \u0022post_v1_coupons_preview\u0022,\r\n        \u0022description\u0022: \u0022AC-1.1: valid coupon returns subtotal, discount, total, and per-line allocations.\u0022,\r\n        \u0022requestBody\u0022: {\r\n          \u0022required\u0022: true,\r\n          \u0022content\u0022: {\r\n            \u0022application/json\u0022: {\r\n              \u0022example\u0022: {\r\n                \u0022code\u0022: \u0022SAVE10\u0022,\r\n                \u0022customerId\u0022: \u0022customer-1\u0022,\r\n                \u0022cart\u0022: {\r\n                  \u0022lines\u0022: [\r\n                    {\r\n                      \u0022lineId\u0022: \u0022line-1\u0022,\r\n                      \u0022pizzaId\u0022: \u0022margherita\u0022,\r\n                      \u0022category\u0022: \u0022classic\u0022,\r\n                      \u0022unitPrice\u0022: 9.50,\r\n                      \u0022quantity\u0022: 2\r\n                    },\r\n                    {\r\n                      \u0022lineId\u0022: \u0022line-2\u0022,\r\n                      \u0022pizzaId\u0022: \u0022bbq-chicken\u0022,\r\n                      \u0022category\u0022: \u0022meat\u0022,\r\n                      \u0022unitPrice\u0022: 12.00,\r\n                      \u0022quantity\u0022: 1\r\n                    }\r\n                  ]\r\n                }\r\n              }\r\n            }\r\n          }\r\n        },\r\n        \u0022security\u0022: [\r\n          {\r\n            \u0022bearerAuth\u0022: []\r\n          }\r\n        ]\r\n      }\r\n    },\r\n    \u0022/v1/health/live\u0022: {\r\n      \u0022get\u0022: {\r\n        \u0022summary\u0022: \u0022GET /v1/health/live\u0022,\r\n        \u0022operationId\u0022: \u0022get_v1_health_live\u0022,\r\n        \u0022description\u0022: \u0022Anonymous liveness probe.\u0022\r\n      }\r\n    },\r\n    \u0022/v1/health/ready\u0022: {\r\n      \u0022get\u0022: {\r\n        \u0022summary\u0022: \u0022GET /v1/health/ready\u0022,\r\n        \u0022operationId\u0022: \u0022get_v1_health_ready\u0022,\r\n        \u0022description\u0022: \u0022Readiness probe \\u2014 includes policy repository check.\u0022\r\n      }\r\n    },\r\n    \u0022/v1/reservations\u0022: {\r\n      \u0022post\u0022: {\r\n        \u0022summary\u0022: \u0022POST /v1/reservations \\u2014 reserve\u0022,\r\n        \u0022operationId\u0022: \u0022post_v1_reservations\u0022,\r\n        \u0022description\u0022: \u0022Authoritative re-price and reserve.\u0022,\r\n        \u0022requestBody\u0022: {\r\n          \u0022required\u0022: true,\r\n          \u0022content\u0022: {\r\n            \u0022application/json\u0022: {\r\n              \u0022example\u0022: {\r\n                \u0022code\u0022: \u0022SAVE10\u0022,\r\n                \u0022orderId\u0022: \u0022order-001\u0022,\r\n                \u0022customerId\u0022: \u0022customer-1\u0022,\r\n                \u0022cart\u0022: {\r\n                  \u0022lines\u0022: [\r\n                    {\r\n                      \u0022lineId\u0022: \u0022line-1\u0022,\r\n                      \u0022pizzaId\u0022: \u0022margherita\u0022,\r\n                      \u0022category\u0022: \u0022classic\u0022,\r\n                      \u0022unitPrice\u0022: 9.50,\r\n                      \u0022quantity\u0022: 2\r\n                    }\r\n                  ]\r\n                }\r\n              }\r\n            }\r\n          }\r\n        },\r\n        \u0022security\u0022: [\r\n          {\r\n            \u0022bearerAuth\u0022: []\r\n          }\r\n        ]\r\n      }\r\n    },\r\n    \u0022/v1/reservations/{orderId}/confirm\u0022: {\r\n      \u0022post\u0022: {\r\n        \u0022summary\u0022: \u0022POST /v1/reservations/{orderId}/confirm\u0022,\r\n        \u0022operationId\u0022: \u0022post_v1_reservations_orderId_confirm\u0022,\r\n        \u0022description\u0022: \u0022Confirm reservation \\u2014 idempotent.\u0022,\r\n        \u0022security\u0022: [\r\n          {\r\n            \u0022bearerAuth\u0022: []\r\n          }\r\n        ]\r\n      }\r\n    },\r\n    \u0022/v1/reservations/{orderId}/release\u0022: {\r\n      \u0022post\u0022: {\r\n        \u0022summary\u0022: \u0022POST /v1/reservations/{orderId}/release\u0022,\r\n        \u0022operationId\u0022: \u0022post_v1_reservations_orderId_release\u0022,\r\n        \u0022description\u0022: \u0022Release reservation \\u2014 idempotent.\u0022,\r\n        \u0022requestBody\u0022: {\r\n          \u0022required\u0022: true,\r\n          \u0022content\u0022: {\r\n            \u0022application/json\u0022: {\r\n              \u0022example\u0022: {\r\n                \u0022reason\u0022: \u0022payment_failed\u0022\r\n              }\r\n            }\r\n          }\r\n        },\r\n        \u0022security\u0022: [\r\n          {\r\n            \u0022bearerAuth\u0022: []\r\n          }\r\n        ]\r\n      }\r\n    },\r\n    \u0022/v1/admin/policies\u0022: {\r\n      \u0022get\u0022: {\r\n        \u0022summary\u0022: \u0022GET /v1/admin/policies\u0022,\r\n        \u0022operationId\u0022: \u0022get_v1_admin_policies\u0022,\r\n        \u0022description\u0022: \u0022List policies.\u0022,\r\n        \u0022security\u0022: [\r\n          {\r\n            \u0022bearerAuth\u0022: []\r\n          }\r\n        ]\r\n      },\r\n      \u0022post\u0022: {\r\n        \u0022summary\u0022: \u0022POST /v1/admin/policies\u0022,\r\n        \u0022operationId\u0022: \u0022post_v1_admin_policies\u0022,\r\n        \u0022description\u0022: \u0022Create policy \\u2014 validated against engine manifest.\u0022,\r\n        \u0022requestBody\u0022: {\r\n          \u0022required\u0022: true,\r\n          \u0022content\u0022: {\r\n            \u0022application/json\u0022: {\r\n              \u0022example\u0022: {\r\n                \u0022policyId\u0022: \u0022save10\u0022,\r\n                \u0022code\u0022: \u0022SAVE10\u0022,\r\n                \u0022trigger\u0022: \u0022code\u0022,\r\n                \u0022status\u0022: \u0022Active\u0022,\r\n                \u0022engineSchema\u0022: \u00221.0\u0022,\r\n                \u0022condition\u0022: {\r\n                  \u0022gte\u0022: [\r\n                    {\r\n                      \u0022fact\u0022: \u0022cart.subtotal\u0022\r\n                    },\r\n                    0\r\n                  ]\r\n                },\r\n                \u0022effect\u0022: {\r\n                  \u0022percentage\u0022: {\r\n                    \u0022value\u0022: 10,\r\n                    \u0022of\u0022: {\r\n                      \u0022lines\u0022: {\r\n                        \u0022where\u0022: {\r\n                          \u0022gte\u0022: [\r\n                            {\r\n                              \u0022fact\u0022: \u0022line.quantity\u0022\r\n                            },\r\n                            1\r\n                          ]\r\n                        }\r\n                      }\r\n                    }\r\n                  }\r\n                }\r\n              }\r\n            }\r\n          }\r\n        },\r\n        \u0022security\u0022: [\r\n          {\r\n            \u0022bearerAuth\u0022: []\r\n          }\r\n        ]\r\n      }\r\n    },\r\n    \u0022/v1/admin/policies/{policyId}\u0022: {\r\n      \u0022get\u0022: {\r\n        \u0022summary\u0022: \u0022GET /v1/admin/policies/{policyId}\u0022,\r\n        \u0022operationId\u0022: \u0022get_v1_admin_policies_policyId\u0022,\r\n        \u0022description\u0022: \u0022Read a policy by id.\u0022,\r\n        \u0022security\u0022: [\r\n          {\r\n            \u0022bearerAuth\u0022: []\r\n          }\r\n        ]\r\n      },\r\n      \u0022put\u0022: {\r\n        \u0022summary\u0022: \u0022PUT /v1/admin/policies/{policyId}\u0022,\r\n        \u0022operationId\u0022: \u0022put_v1_admin_policies_policyId\u0022,\r\n        \u0022description\u0022: \u0022Update policy \\u2014 requires If-Match ETag header.\u0022,\r\n        \u0022requestBody\u0022: {\r\n          \u0022required\u0022: true,\r\n          \u0022content\u0022: {\r\n            \u0022application/json\u0022: {\r\n              \u0022example\u0022: {\r\n                \u0022policyId\u0022: \u0022save10\u0022,\r\n                \u0022code\u0022: \u0022SAVE10\u0022,\r\n                \u0022status\u0022: \u0022Active\u0022,\r\n                \u0022engineSchema\u0022: \u00221.0\u0022\r\n              }\r\n            }\r\n          }\r\n        },\r\n        \u0022security\u0022: [\r\n          {\r\n            \u0022bearerAuth\u0022: []\r\n          }\r\n        ]\r\n      },\r\n      \u0022delete\u0022: {\r\n        \u0022summary\u0022: \u0022DELETE /v1/admin/policies/{policyId}\u0022,\r\n        \u0022operationId\u0022: \u0022delete_v1_admin_policies_policyId\u0022,\r\n        \u0022description\u0022: \u0022Archive policy (soft delete).\u0022,\r\n        \u0022security\u0022: [\r\n          {\r\n            \u0022bearerAuth\u0022: []\r\n          }\r\n        ]\r\n      }\r\n    },\r\n    \u0022/v1/admin/policies/{policyId}/simulate\u0022: {\r\n      \u0022post\u0022: {\r\n        \u0022summary\u0022: \u0022POST /v1/admin/policies/{policyId}/simulate\u0022,\r\n        \u0022operationId\u0022: \u0022post_v1_admin_policies_policyId_simulate\u0022,\r\n        \u0022description\u0022: \u0022Dry run against a sample cart \\u2014 returns trace.\u0022,\r\n        \u0022requestBody\u0022: {\r\n          \u0022required\u0022: true,\r\n          \u0022content\u0022: {\r\n            \u0022application/json\u0022: {\r\n              \u0022example\u0022: {\r\n                \u0022code\u0022: \u0022SAVE10\u0022,\r\n                \u0022customerId\u0022: \u0022customer-1\u0022,\r\n                \u0022cart\u0022: {\r\n                  \u0022lines\u0022: [\r\n                    {\r\n                      \u0022lineId\u0022: \u0022line-1\u0022,\r\n                      \u0022pizzaId\u0022: \u0022margherita\u0022,\r\n                      \u0022category\u0022: \u0022classic\u0022,\r\n                      \u0022unitPrice\u0022: 31.00,\r\n                      \u0022quantity\u0022: 1\r\n                    }\r\n                  ]\r\n                }\r\n              }\r\n            }\r\n          }\r\n        },\r\n        \u0022security\u0022: [\r\n          {\r\n            \u0022bearerAuth\u0022: []\r\n          }\r\n        ]\r\n      }\r\n    },\r\n    \u0022/v1/admin/policies/{policyId}/status\u0022: {\r\n      \u0022post\u0022: {\r\n        \u0022summary\u0022: \u0022POST /v1/admin/policies/{policyId}/status\u0022,\r\n        \u0022operationId\u0022: \u0022post_v1_admin_policies_policyId_status\u0022,\r\n        \u0022description\u0022: \u0022Promote lifecycle: Draft, Shadow, Active, Paused, Archived.\u0022,\r\n        \u0022requestBody\u0022: {\r\n          \u0022required\u0022: true,\r\n          \u0022content\u0022: {\r\n            \u0022application/json\u0022: {\r\n              \u0022example\u0022: {\r\n                \u0022status\u0022: \u0022Active\u0022\r\n              }\r\n            }\r\n          }\r\n        },\r\n        \u0022security\u0022: [\r\n          {\r\n            \u0022bearerAuth\u0022: []\r\n          }\r\n        ]\r\n      }\r\n    },\r\n    \u0022/v1/policy-engine/manifest\u0022: {\r\n      \u0022get\u0022: {\r\n        \u0022summary\u0022: \u0022GET /v1/policy-engine/manifest\u0022,\r\n        \u0022operationId\u0022: \u0022get_v1_policy-engine_manifest\u0022,\r\n        \u0022description\u0022: \u0022Facts, operators, effects, and limits.\u0022,\r\n        \u0022security\u0022: [\r\n          {\r\n            \u0022bearerAuth\u0022: []\r\n          }\r\n        ]\r\n      }\r\n    },\r\n    \u0022/openapi/v1.json\u0022: {\r\n      \u0022get\u0022: {\r\n        \u0022summary\u0022: \u0022GET /openapi/v1.json\u0022,\r\n        \u0022operationId\u0022: \u0022get_openapi_v1.json\u0022,\r\n        \u0022description\u0022: \u0022Live OpenAPI JSON while running in Development.\u0022\r\n      }\r\n    }\r\n  },\r\n  \u0022components\u0022: {\r\n    \u0022securitySchemes\u0022: {\r\n      \u0022bearerAuth\u0022: {\r\n        \u0022type\u0022: \u0022http\u0022,\r\n        \u0022scheme\u0022: \u0022bearer\u0022,\r\n        \u0022bearerFormat\u0022: \u0022JWT\u0022\r\n      }\r\n    }\r\n  }\r\n}"
+    },
+    {
+      "_type": "request_group",
       "_id": "8ae67deee5a6",
       "parentId": "wrk_coupon_service",
       "name": "Coupon Service",
-      "description": "Generated from coupon-service-openapi.json. Re-import this workspace after dotnet build to refresh.",
+      "description": "Dedicated /v1 routes for Coupon Service. Edit insomnia/routes/coupon-service.routes.json to add routes.",
       "environment": {},
       "metaSortKey": -1000
+    },
+    {
+      "_type": "request_group",
+      "_id": "1b68838dea09",
+      "parentId": "8ae67deee5a6",
+      "name": "Preview",
+      "description": "Advisory pricing \u2014 never writes (AC-1.6).",
+      "environment": {},
+      "metaSortKey": -900
+    },
+    {
+      "_type": "request",
+      "_id": "req_848f7d07e459",
+      "parentId": "1b68838dea09",
+      "name": "POST /v1/coupons/preview \u2014 SAVE10 applied",
+      "method": "POST",
+      "url": "{{ _.coupon_base_url }}/v1/coupons/preview",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "X-Correlation-Id",
+          "value": "{{ _.correlation_id }}"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.customer_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -890,
+      "description": "AC-1.1: valid coupon returns subtotal, discount, total, and per-line allocations.",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\r\n  \u0022code\u0022: \u0022SAVE10\u0022,\r\n  \u0022customerId\u0022: \u0022customer-1\u0022,\r\n  \u0022cart\u0022: {\r\n    \u0022lines\u0022: [\r\n      {\r\n        \u0022lineId\u0022: \u0022line-1\u0022,\r\n        \u0022pizzaId\u0022: \u0022margherita\u0022,\r\n        \u0022category\u0022: \u0022classic\u0022,\r\n        \u0022unitPrice\u0022: 9.50,\r\n        \u0022quantity\u0022: 2\r\n      },\r\n      {\r\n        \u0022lineId\u0022: \u0022line-2\u0022,\r\n        \u0022pizzaId\u0022: \u0022bbq-chicken\u0022,\r\n        \u0022category\u0022: \u0022meat\u0022,\r\n        \u0022unitPrice\u0022: 12.00,\r\n        \u0022quantity\u0022: 1\r\n      }\r\n    ]\r\n  }\r\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_23e148327c2d",
+      "parentId": "1b68838dea09",
+      "name": "POST /v1/coupons/preview \u2014 minimum not met",
+      "method": "POST",
+      "url": "{{ _.coupon_base_url }}/v1/coupons/preview",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "X-Correlation-Id",
+          "value": "{{ _.correlation_id }}"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.customer_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -889,
+      "description": "AC-1.2 / AC-1.3: HTTP 200 with status Rejected, reason, near-miss hint, full-price breakdown.",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\r\n  \u0022code\u0022: \u0022MIN25\u0022,\r\n  \u0022customerId\u0022: \u0022customer-1\u0022,\r\n  \u0022cart\u0022: {\r\n    \u0022lines\u0022: [\r\n      {\r\n        \u0022lineId\u0022: \u0022line-1\u0022,\r\n        \u0022pizzaId\u0022: \u0022margherita\u0022,\r\n        \u0022category\u0022: \u0022classic\u0022,\r\n        \u0022unitPrice\u0022: 21.90,\r\n        \u0022quantity\u0022: 1\r\n      }\r\n    ]\r\n  }\r\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_941a652edcbb",
+      "parentId": "1b68838dea09",
+      "name": "POST /v1/coupons/preview \u2014 expired coupon",
+      "method": "POST",
+      "url": "{{ _.coupon_base_url }}/v1/coupons/preview",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "X-Correlation-Id",
+          "value": "{{ _.correlation_id }}"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.customer_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -888,
+      "description": "HTTP 200 with reason Expired \u2014 rejection is a business outcome, not an error.",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\r\n  \u0022code\u0022: \u0022OLDCODE\u0022,\r\n  \u0022customerId\u0022: \u0022customer-1\u0022,\r\n  \u0022cart\u0022: {\r\n    \u0022lines\u0022: [\r\n      {\r\n        \u0022lineId\u0022: \u0022line-1\u0022,\r\n        \u0022pizzaId\u0022: \u0022margherita\u0022,\r\n        \u0022category\u0022: \u0022classic\u0022,\r\n        \u0022unitPrice\u0022: 31.00,\r\n        \u0022quantity\u0022: 1\r\n      }\r\n    ]\r\n  }\r\n}"
+      }
+    },
+    {
+      "_type": "request_group",
+      "_id": "7bd0d16ab4f0",
+      "parentId": "8ae67deee5a6",
+      "name": "Health",
+      "description": "Liveness and readiness probes.",
+      "environment": {},
+      "metaSortKey": -887
+    },
+    {
+      "_type": "request",
+      "_id": "req_065a5a5e5698",
+      "parentId": "7bd0d16ab4f0",
+      "name": "GET /v1/health/live",
+      "method": "GET",
+      "url": "{{ _.coupon_base_url }}/v1/health/live",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "X-Correlation-Id",
+          "value": "{{ _.correlation_id }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -877,
+      "description": "Anonymous liveness probe."
+    },
+    {
+      "_type": "request",
+      "_id": "req_adb9a3574a1c",
+      "parentId": "7bd0d16ab4f0",
+      "name": "GET /v1/health/ready",
+      "method": "GET",
+      "url": "{{ _.coupon_base_url }}/v1/health/ready",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "X-Correlation-Id",
+          "value": "{{ _.correlation_id }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -876,
+      "description": "Readiness probe \u2014 includes policy repository check."
+    },
+    {
+      "_type": "request_group",
+      "_id": "1db7d0ed3caa",
+      "parentId": "8ae67deee5a6",
+      "name": "Reservations",
+      "description": "Internal ingress only \u2014 requires Coupon.Redeem (Order API managed identity).",
+      "environment": {},
+      "metaSortKey": -875
+    },
+    {
+      "_type": "request",
+      "_id": "req_7ca5a774935b",
+      "parentId": "1db7d0ed3caa",
+      "name": "POST /v1/reservations \u2014 reserve",
+      "method": "POST",
+      "url": "{{ _.coupon_base_url }}/v1/reservations",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "X-Correlation-Id",
+          "value": "{{ _.correlation_id }}"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.redeem_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -865,
+      "description": "Authoritative re-price and reserve.",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\r\n  \u0022code\u0022: \u0022SAVE10\u0022,\r\n  \u0022orderId\u0022: \u0022order-001\u0022,\r\n  \u0022customerId\u0022: \u0022customer-1\u0022,\r\n  \u0022cart\u0022: {\r\n    \u0022lines\u0022: [\r\n      {\r\n        \u0022lineId\u0022: \u0022line-1\u0022,\r\n        \u0022pizzaId\u0022: \u0022margherita\u0022,\r\n        \u0022category\u0022: \u0022classic\u0022,\r\n        \u0022unitPrice\u0022: 9.50,\r\n        \u0022quantity\u0022: 2\r\n      }\r\n    ]\r\n  }\r\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_a7d30c5f7186",
+      "parentId": "1db7d0ed3caa",
+      "name": "POST /v1/reservations/{orderId}/confirm",
+      "method": "POST",
+      "url": "{{ _.coupon_base_url }}/v1/reservations/order-001/confirm",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "X-Correlation-Id",
+          "value": "{{ _.correlation_id }}"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.redeem_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -864,
+      "description": "Confirm reservation \u2014 idempotent."
+    },
+    {
+      "_type": "request",
+      "_id": "req_5fb9b4299f93",
+      "parentId": "1db7d0ed3caa",
+      "name": "POST /v1/reservations/{orderId}/release",
+      "method": "POST",
+      "url": "{{ _.coupon_base_url }}/v1/reservations/order-001/release",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "X-Correlation-Id",
+          "value": "{{ _.correlation_id }}"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.redeem_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -863,
+      "description": "Release reservation \u2014 idempotent.",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\r\n  \u0022reason\u0022: \u0022payment_failed\u0022\r\n}"
+      }
+    },
+    {
+      "_type": "request_group",
+      "_id": "3e86bdc9454a",
+      "parentId": "8ae67deee5a6",
+      "name": "Admin \u2014 Policies",
+      "description": "Requires Coupon.Admin role.",
+      "environment": {},
+      "metaSortKey": -862
+    },
+    {
+      "_type": "request",
+      "_id": "req_b411086cc387",
+      "parentId": "3e86bdc9454a",
+      "name": "GET /v1/admin/policies",
+      "method": "GET",
+      "url": "{{ _.coupon_base_url }}/v1/admin/policies",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "X-Correlation-Id",
+          "value": "{{ _.correlation_id }}"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.admin_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -852,
+      "description": "List policies."
+    },
+    {
+      "_type": "request",
+      "_id": "req_16035e2f32af",
+      "parentId": "3e86bdc9454a",
+      "name": "POST /v1/admin/policies",
+      "method": "POST",
+      "url": "{{ _.coupon_base_url }}/v1/admin/policies",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "X-Correlation-Id",
+          "value": "{{ _.correlation_id }}"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.admin_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -851,
+      "description": "Create policy \u2014 validated against engine manifest.",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\r\n  \u0022policyId\u0022: \u0022save10\u0022,\r\n  \u0022code\u0022: \u0022SAVE10\u0022,\r\n  \u0022trigger\u0022: \u0022code\u0022,\r\n  \u0022status\u0022: \u0022Active\u0022,\r\n  \u0022engineSchema\u0022: \u00221.0\u0022,\r\n  \u0022condition\u0022: {\r\n    \u0022gte\u0022: [\r\n      {\r\n        \u0022fact\u0022: \u0022cart.subtotal\u0022\r\n      },\r\n      0\r\n    ]\r\n  },\r\n  \u0022effect\u0022: {\r\n    \u0022percentage\u0022: {\r\n      \u0022value\u0022: 10,\r\n      \u0022of\u0022: {\r\n        \u0022lines\u0022: {\r\n          \u0022where\u0022: {\r\n            \u0022gte\u0022: [\r\n              {\r\n                \u0022fact\u0022: \u0022line.quantity\u0022\r\n              },\r\n              1\r\n            ]\r\n          }\r\n        }\r\n      }\r\n    }\r\n  }\r\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_7c262bc9208f",
+      "parentId": "3e86bdc9454a",
+      "name": "GET /v1/admin/policies/{policyId}",
+      "method": "GET",
+      "url": "{{ _.coupon_base_url }}/v1/admin/policies/save10",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "X-Correlation-Id",
+          "value": "{{ _.correlation_id }}"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.admin_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -850,
+      "description": "Read a policy by id."
+    },
+    {
+      "_type": "request",
+      "_id": "req_aeac317cb195",
+      "parentId": "3e86bdc9454a",
+      "name": "PUT /v1/admin/policies/{policyId}",
+      "method": "PUT",
+      "url": "{{ _.coupon_base_url }}/v1/admin/policies/save10",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "If-Match",
+          "value": "\u00221\u0022"
+        },
+        {
+          "name": "X-Correlation-Id",
+          "value": "{{ _.correlation_id }}"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.admin_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -849,
+      "description": "Update policy \u2014 requires If-Match ETag header.",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\r\n  \u0022policyId\u0022: \u0022save10\u0022,\r\n  \u0022code\u0022: \u0022SAVE10\u0022,\r\n  \u0022status\u0022: \u0022Active\u0022,\r\n  \u0022engineSchema\u0022: \u00221.0\u0022\r\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_1f553f7a5411",
+      "parentId": "3e86bdc9454a",
+      "name": "DELETE /v1/admin/policies/{policyId}",
+      "method": "DELETE",
+      "url": "{{ _.coupon_base_url }}/v1/admin/policies/save10",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "X-Correlation-Id",
+          "value": "{{ _.correlation_id }}"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.admin_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -848,
+      "description": "Archive policy (soft delete)."
+    },
+    {
+      "_type": "request",
+      "_id": "req_8820f879d109",
+      "parentId": "3e86bdc9454a",
+      "name": "POST /v1/admin/policies/{policyId}/simulate",
+      "method": "POST",
+      "url": "{{ _.coupon_base_url }}/v1/admin/policies/save10/simulate",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "X-Correlation-Id",
+          "value": "{{ _.correlation_id }}"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.admin_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -847,
+      "description": "Dry run against a sample cart \u2014 returns trace.",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\r\n  \u0022code\u0022: \u0022SAVE10\u0022,\r\n  \u0022customerId\u0022: \u0022customer-1\u0022,\r\n  \u0022cart\u0022: {\r\n    \u0022lines\u0022: [\r\n      {\r\n        \u0022lineId\u0022: \u0022line-1\u0022,\r\n        \u0022pizzaId\u0022: \u0022margherita\u0022,\r\n        \u0022category\u0022: \u0022classic\u0022,\r\n        \u0022unitPrice\u0022: 31.00,\r\n        \u0022quantity\u0022: 1\r\n      }\r\n    ]\r\n  }\r\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_96cddc77477f",
+      "parentId": "3e86bdc9454a",
+      "name": "POST /v1/admin/policies/{policyId}/status",
+      "method": "POST",
+      "url": "{{ _.coupon_base_url }}/v1/admin/policies/save10/status",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "X-Correlation-Id",
+          "value": "{{ _.correlation_id }}"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.admin_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -846,
+      "description": "Promote lifecycle: Draft, Shadow, Active, Paused, Archived.",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\r\n  \u0022status\u0022: \u0022Active\u0022\r\n}"
+      }
+    },
+    {
+      "_type": "request_group",
+      "_id": "06c3a80b4fcf",
+      "parentId": "8ae67deee5a6",
+      "name": "Policy Engine",
+      "description": "Engine manifest for admin tooling.",
+      "environment": {},
+      "metaSortKey": -845
+    },
+    {
+      "_type": "request",
+      "_id": "req_dfcf8f2c1020",
+      "parentId": "06c3a80b4fcf",
+      "name": "GET /v1/policy-engine/manifest",
+      "method": "GET",
+      "url": "{{ _.coupon_base_url }}/v1/policy-engine/manifest",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "X-Correlation-Id",
+          "value": "{{ _.correlation_id }}"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.admin_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -835,
+      "description": "Facts, operators, effects, and limits."
+    },
+    {
+      "_type": "request_group",
+      "_id": "f0ef53a2351d",
+      "parentId": "8ae67deee5a6",
+      "name": "OpenAPI",
+      "description": "Generated OpenAPI document from the running API.",
+      "environment": {},
+      "metaSortKey": -834
+    },
+    {
+      "_type": "request",
+      "_id": "req_aa7a53c02e85",
+      "parentId": "f0ef53a2351d",
+      "name": "GET /openapi/v1.json",
+      "method": "GET",
+      "url": "{{ _.coupon_base_url }}/openapi/v1.json",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "X-Correlation-Id",
+          "value": "{{ _.correlation_id }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -824,
+      "description": "Live OpenAPI JSON while running in Development."
+    },
+    {
+      "_type": "api_spec",
+      "_id": "003d7c9a3d2b",
+      "parentId": "fld_documentation",
+      "fileName": "order-api-openapi.json",
+      "contentType": "json",
+      "contents": "{\r\n  \u0022openapi\u0022: \u00223.1.1\u0022,\r\n  \u0022info\u0022: {\r\n    \u0022title\u0022: \u0022Order API\u0022,\r\n    \u0022description\u0022: \u0022Checkout stand-in for the pizza ordering platform.\u0022,\r\n    \u0022version\u0022: \u0022v1\u0022\r\n  },\r\n  \u0022paths\u0022: {\r\n    \u0022/v1/pizzas\u0022: {\r\n      \u0022get\u0022: {\r\n        \u0022summary\u0022: \u0022GET /v1/pizzas\u0022,\r\n        \u0022operationId\u0022: \u0022get_v1_pizzas\u0022,\r\n        \u0022description\u0022: \u0022List available pizzas.\u0022,\r\n        \u0022security\u0022: [\r\n          {\r\n            \u0022bearerAuth\u0022: []\r\n          }\r\n        ]\r\n      }\r\n    },\r\n    \u0022/v1/orders\u0022: {\r\n      \u0022post\u0022: {\r\n        \u0022summary\u0022: \u0022POST /v1/orders \\u2014 checkout with coupon\u0022,\r\n        \u0022operationId\u0022: \u0022post_v1_orders\u0022,\r\n        \u0022description\u0022: \u0022Submit order; client total is discarded \\u2014 server re-prices authoritatively.\u0022,\r\n        \u0022requestBody\u0022: {\r\n          \u0022required\u0022: true,\r\n          \u0022content\u0022: {\r\n            \u0022application/json\u0022: {\r\n              \u0022example\u0022: {\r\n                \u0022couponCode\u0022: \u0022SAVE10\u0022,\r\n                \u0022cart\u0022: {\r\n                  \u0022lines\u0022: [\r\n                    {\r\n                      \u0022lineId\u0022: \u0022line-1\u0022,\r\n                      \u0022pizzaId\u0022: \u0022margherita\u0022,\r\n                      \u0022category\u0022: \u0022classic\u0022,\r\n                      \u0022unitPrice\u0022: 9.50,\r\n                      \u0022quantity\u0022: 2\r\n                    },\r\n                    {\r\n                      \u0022lineId\u0022: \u0022line-2\u0022,\r\n                      \u0022pizzaId\u0022: \u0022bbq-chicken\u0022,\r\n                      \u0022category\u0022: \u0022meat\u0022,\r\n                      \u0022unitPrice\u0022: 12.00,\r\n                      \u0022quantity\u0022: 1\r\n                    }\r\n                  ]\r\n                }\r\n              }\r\n            }\r\n          }\r\n        },\r\n        \u0022security\u0022: [\r\n          {\r\n            \u0022bearerAuth\u0022: []\r\n          }\r\n        ]\r\n      }\r\n    },\r\n    \u0022/v1/orders/{orderId}\u0022: {\r\n      \u0022get\u0022: {\r\n        \u0022summary\u0022: \u0022GET /v1/orders/{orderId}\u0022,\r\n        \u0022operationId\u0022: \u0022get_v1_orders_orderId\u0022,\r\n        \u0022description\u0022: \u0022Read order by id.\u0022,\r\n        \u0022security\u0022: [\r\n          {\r\n            \u0022bearerAuth\u0022: []\r\n          }\r\n        ]\r\n      }\r\n    },\r\n    \u0022/openapi/v1.json\u0022: {\r\n      \u0022get\u0022: {\r\n        \u0022summary\u0022: \u0022GET /openapi/v1.json\u0022,\r\n        \u0022operationId\u0022: \u0022get_openapi_v1.json\u0022,\r\n        \u0022description\u0022: \u0022Live OpenAPI JSON while running in Development.\u0022\r\n      }\r\n    }\r\n  },\r\n  \u0022components\u0022: {\r\n    \u0022securitySchemes\u0022: {\r\n      \u0022bearerAuth\u0022: {\r\n        \u0022type\u0022: \u0022http\u0022,\r\n        \u0022scheme\u0022: \u0022bearer\u0022,\r\n        \u0022bearerFormat\u0022: \u0022JWT\u0022\r\n      }\r\n    }\r\n  }\r\n}"
     },
     {
       "_type": "request_group",
       "_id": "f66037cadff0",
       "parentId": "wrk_coupon_service",
       "name": "Order API",
-      "description": "Generated from order-api-openapi.json. Re-import this workspace after dotnet build to refresh.",
+      "description": "Dedicated /v1 routes for Order API. Edit insomnia/routes/order-api.routes.json to add routes.",
       "environment": {},
-      "metaSortKey": -900
+      "metaSortKey": -823
+    },
+    {
+      "_type": "request_group",
+      "_id": "77affad73600",
+      "parentId": "f66037cadff0",
+      "name": "Catalog",
+      "description": "Pizza catalog from data/pizzas.json.",
+      "environment": {},
+      "metaSortKey": -723
+    },
+    {
+      "_type": "request",
+      "_id": "req_f0c1bba519f6",
+      "parentId": "77affad73600",
+      "name": "GET /v1/pizzas",
+      "method": "GET",
+      "url": "{{ _.order_base_url }}/v1/pizzas",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "X-Correlation-Id",
+          "value": "{{ _.correlation_id }}"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.customer_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -713,
+      "description": "List available pizzas."
+    },
+    {
+      "_type": "request_group",
+      "_id": "066032050581",
+      "parentId": "f66037cadff0",
+      "name": "Orders",
+      "description": "Checkout stand-in \u2014 calls Coupon Service reserve then confirm.",
+      "environment": {},
+      "metaSortKey": -712
+    },
+    {
+      "_type": "request",
+      "_id": "req_3434e2043191",
+      "parentId": "066032050581",
+      "name": "POST /v1/orders \u2014 checkout with coupon",
+      "method": "POST",
+      "url": "{{ _.order_base_url }}/v1/orders",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "X-Correlation-Id",
+          "value": "{{ _.correlation_id }}"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.customer_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -702,
+      "description": "Submit order; client total is discarded \u2014 server re-prices authoritatively.",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\r\n  \u0022couponCode\u0022: \u0022SAVE10\u0022,\r\n  \u0022cart\u0022: {\r\n    \u0022lines\u0022: [\r\n      {\r\n        \u0022lineId\u0022: \u0022line-1\u0022,\r\n        \u0022pizzaId\u0022: \u0022margherita\u0022,\r\n        \u0022category\u0022: \u0022classic\u0022,\r\n        \u0022unitPrice\u0022: 9.50,\r\n        \u0022quantity\u0022: 2\r\n      },\r\n      {\r\n        \u0022lineId\u0022: \u0022line-2\u0022,\r\n        \u0022pizzaId\u0022: \u0022bbq-chicken\u0022,\r\n        \u0022category\u0022: \u0022meat\u0022,\r\n        \u0022unitPrice\u0022: 12.00,\r\n        \u0022quantity\u0022: 1\r\n      }\r\n    ]\r\n  }\r\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_b9229dd4f1b1",
+      "parentId": "066032050581",
+      "name": "GET /v1/orders/{orderId}",
+      "method": "GET",
+      "url": "{{ _.order_base_url }}/v1/orders/order-001",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "X-Correlation-Id",
+          "value": "{{ _.correlation_id }}"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.customer_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -701,
+      "description": "Read order by id."
+    },
+    {
+      "_type": "request_group",
+      "_id": "4429a6c36a2a",
+      "parentId": "f66037cadff0",
+      "name": "OpenAPI",
+      "description": "Generated OpenAPI document from the running API.",
+      "environment": {},
+      "metaSortKey": -700
+    },
+    {
+      "_type": "request",
+      "_id": "req_2363d960b967",
+      "parentId": "4429a6c36a2a",
+      "name": "GET /openapi/v1.json",
+      "method": "GET",
+      "url": "{{ _.order_base_url }}/openapi/v1.json",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "X-Correlation-Id",
+          "value": "{{ _.correlation_id }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -690,
+      "description": "Live OpenAPI JSON while running in Development."
     }
   ]
 }

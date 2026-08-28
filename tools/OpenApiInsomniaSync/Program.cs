@@ -13,8 +13,18 @@ var outputFile = Path.Combine(repoRoot, "insomnia", "coupon-service.insomnia.jso
 
 var services = new[]
 {
-    new ServiceDefinition("coupon-service-openapi.json", "Coupon Service", "coupon_base_url"),
-    new ServiceDefinition("order-api-openapi.json", "Order API", "order_base_url"),
+    new ServiceDefinition(
+        "coupon-service-openapi.json",
+        "coupon-service.routes.json",
+        "Coupon Service",
+        "coupon_base_url",
+        "coupon-service-design.insomnia.json"),
+    new ServiceDefinition(
+        "order-api-openapi.json",
+        "order-api.routes.json",
+        "Order API",
+        "order_base_url",
+        "order-api-design.insomnia.json"),
 };
 
 if (!Directory.Exists(generatedDir))
@@ -30,31 +40,57 @@ var resources = new JsonArray
     CreateWorkspace(),
     CreateEnvironment("env_base", "wrk_coupon_service", null, "Base Environment", new JsonObject(), null, null),
     environment,
+    CreateRequestGroup(
+        "fld_documentation",
+        "wrk_coupon_service",
+        "Documentation (Swagger / Redoc preview)",
+        "Open these design specs in Insomnia for a rendered OpenAPI preview.\n\n" +
+        "Import each *-design.insomnia.json file as a Design Document, then use the Design tab.\n" +
+        "From the design document: Settings → Generate collection → Debug tab to send requests.",
+        -1100),
 };
 
+var designExports = new List<string>();
 var sortKey = -1000;
 foreach (var service in services)
 {
     var openApiPath = Path.Combine(generatedDir, service.FileName);
-    if (!File.Exists(openApiPath))
-    {
-        Console.WriteLine($"Skipping missing OpenAPI document: {openApiPath}");
-        continue;
-    }
+    var openApiText = File.Exists(openApiPath)
+        ? File.ReadAllText(openApiPath)
+        : """{"openapi":"3.1.1","info":{"title":"API","version":"v1"},"paths":{}}""";
 
-    using var document = JsonDocument.Parse(File.ReadAllText(openApiPath));
-    var folderId = StableId($"folder:{service.FolderName}");
-    resources.Add(CreateRequestGroup(folderId, "wrk_coupon_service", service.FolderName,
-        $"Generated from {service.FileName}. Re-import this workspace after dotnet build to refresh.",
+    var routesPath = Path.Combine(repoRoot, "insomnia", "routes", service.RoutesCatalogFileName);
+    var routeCatalog = RouteCatalogLoader.Load(routesPath);
+    var mergedOpenApiText = RouteCatalogLoader.MergeIntoOpenApi(openApiText, routeCatalog);
+
+    var specId = StableId($"spec:{service.FileName}");
+    resources.Add(CreateApiSpec(specId, "fld_documentation", service.FileName, mergedOpenApiText));
+
+    var designOutput = Path.Combine(repoRoot, "insomnia", service.DesignExportFileName);
+    WriteDesignDocumentExport(designOutput, service, mergedOpenApiText, environment);
+    designExports.Add(designOutput);
+
+    var serviceFolderId = StableId($"folder:{service.FolderName}");
+    resources.Add(CreateRequestGroup(
+        serviceFolderId,
+        "wrk_coupon_service",
+        service.FolderName,
+        $"Dedicated /v1 routes for {service.FolderName}. Edit insomnia/routes/{service.RoutesCatalogFileName} to add routes.",
         sortKey));
     sortKey += 100;
 
-    var requestSortKey = sortKey;
-    foreach (var request in InsomniaRequestFactory.CreateRequests(document, folderId, service.BaseUrlVariable))
+    var folderSortKey = sortKey;
+    var (routeRequests, nextSortKey) = RouteCatalogRequestFactory.CreateRequests(
+        routeCatalog,
+        serviceFolderId,
+        service.BaseUrlVariable,
+        folderSortKey);
+    foreach (var request in routeRequests)
     {
-        request["metaSortKey"] = requestSortKey++;
         resources.Add(request);
     }
+
+    sortKey = nextSortKey;
 }
 
 var export = new JsonObject
@@ -70,6 +106,10 @@ Directory.CreateDirectory(Path.GetDirectoryName(outputFile)!);
 File.WriteAllText(outputFile, export.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
 
 Console.WriteLine($"Wrote Insomnia workspace: {outputFile}");
+foreach (var designExport in designExports)
+{
+    Console.WriteLine($"Wrote Insomnia design document: {designExport}");
+}
 return 0;
 
 static JsonObject CreateWorkspace() =>
@@ -80,10 +120,68 @@ static JsonObject CreateWorkspace() =>
         ["name"] = "Coupon Service",
         ["description"] =
             "Auto-generated from OpenAPI on dotnet build.\n\n" +
-            "Source specs: docs/api/generated/*-openapi.json\n" +
-            "Environment: insomnia/environments/local.json\n\n" +
-            "Do not hand-edit coupon-service.insomnia.json — run dotnet build or scripts/sync-insomnia-from-openapi.ps1.",
+            "Swagger / Redoc-style browsing: import insomnia/*-design.insomnia.json as a Design Document.\n" +
+            "Try-it-out requests: use the Coupon Service / Order API folders below.\n\n" +
+            "Regenerate: dotnet build or scripts/sync-insomnia-from-openapi.ps1",
     };
+
+static JsonObject CreateApiSpec(string id, string parentId, string fileName, string contents) =>
+    new()
+    {
+        ["_type"] = "api_spec",
+        ["_id"] = id,
+        ["parentId"] = parentId,
+        ["fileName"] = fileName,
+        ["contentType"] = "json",
+        ["contents"] = contents,
+    };
+
+static void WriteDesignDocumentExport(
+    string outputFile,
+    ServiceDefinition service,
+    string openApiText,
+    JsonObject localEnvironment)
+{
+    var workspaceId = StableId($"design-wrk:{service.FileName}");
+    var specId = StableId($"design-spec:{service.FileName}");
+    var envBaseId = StableId($"design-env-base:{service.FileName}");
+    var envLocalId = StableId($"design-env-local:{service.FileName}");
+
+    var envLocal = localEnvironment.DeepClone().AsObject();
+    envLocal["_id"] = envLocalId;
+    envLocal["parentId"] = envBaseId;
+
+    var resources = new JsonArray
+    {
+        new JsonObject
+        {
+            ["_type"] = "workspace",
+            ["_id"] = workspaceId,
+            ["name"] = $"{service.FolderName} (Design)",
+            ["description"] =
+                "Design document for Swagger / Redoc-style OpenAPI preview in Insomnia.\n\n" +
+                "1. Open this document\n" +
+                "2. Use the Design tab for the rendered spec preview\n" +
+                "3. Settings → Generate collection, then Debug tab to send requests\n\n" +
+                $"Source: docs/api/generated/{service.FileName}",
+        },
+        CreateEnvironment(envBaseId, workspaceId, null, "Base Environment", new JsonObject(), null, null),
+        envLocal,
+        CreateApiSpec(specId, workspaceId, service.FileName, openApiText),
+    };
+
+    var export = new JsonObject
+    {
+        ["_type"] = "export",
+        ["__export_format"] = 4,
+        ["__export_date"] = DateTime.UtcNow.ToString("o"),
+        ["__export_source"] = "OpenApiInsomniaSync:design",
+        ["resources"] = resources,
+    };
+
+    Directory.CreateDirectory(Path.GetDirectoryName(outputFile)!);
+    File.WriteAllText(outputFile, export.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+}
 
 static JsonObject LoadEnvironment(string path)
 {
@@ -172,7 +270,12 @@ static string StableId(string input)
     return Convert.ToHexString(hash)[..12].ToLowerInvariant();
 }
 
-internal sealed record ServiceDefinition(string FileName, string FolderName, string BaseUrlVariable);
+internal sealed record ServiceDefinition(
+    string FileName,
+    string RoutesCatalogFileName,
+    string FolderName,
+    string BaseUrlVariable,
+    string DesignExportFileName);
 
 internal static class InsomniaRequestFactory
 {

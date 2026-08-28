@@ -1,0 +1,57 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-08-28T14:06:30.3239855Z",
+  "__export_source": "OpenApiInsomniaSync:design",
+  "resources": [
+    {
+      "_type": "workspace",
+      "_id": "66bd6481ae39",
+      "name": "Order API (Design)",
+      "description": "Design document for Swagger / Redoc-style OpenAPI preview in Insomnia.\n\n1. Open this document\n2. Use the Design tab for the rendered spec preview\n3. Settings \u2192 Generate collection, then Debug tab to send requests\n\nSource: docs/api/generated/order-api-openapi.json"
+    },
+    {
+      "_type": "environment",
+      "_id": "c2136a8b65b6",
+      "parentId": "66bd6481ae39",
+      "name": "Base Environment",
+      "data": {},
+      "color": null,
+      "isPrivate": false
+    },
+    {
+      "_type": "environment",
+      "_id": "5f5998183b64",
+      "parentId": "c2136a8b65b6",
+      "name": "Local",
+      "data": {
+        "coupon_base_url": "http://localhost:5174",
+        "order_base_url": "http://localhost:5043",
+        "customer_token": "",
+        "admin_token": "",
+        "redeem_token": "",
+        "correlation_id": "insomnia-local-001"
+      },
+      "dataPropertyOrder": {
+        "\u0026": [
+          "coupon_base_url",
+          "order_base_url",
+          "customer_token",
+          "admin_token",
+          "redeem_token",
+          "correlation_id"
+        ]
+      },
+      "color": "#7d69cb",
+      "isPrivate": false
+    },
+    {
+      "_type": "api_spec",
+      "_id": "868832f5cdda",
+      "parentId": "66bd6481ae39",
+      "fileName": "order-api-openapi.json",
+      "contentType": "json",
+      "contents": "{\r\n  \u0022openapi\u0022: \u00223.1.1\u0022,\r\n  \u0022info\u0022: {\r\n    \u0022title\u0022: \u0022Order API\u0022,\r\n    \u0022description\u0022: \u0022Checkout stand-in for the pizza ordering platform.\u0022,\r\n    \u0022version\u0022: \u0022v1\u0022\r\n  },\r\n  \u0022paths\u0022: {\r\n    \u0022/v1/pizzas\u0022: {\r\n      \u0022get\u0022: {\r\n        \u0022summary\u0022: \u0022GET /v1/pizzas\u0022,\r\n        \u0022operationId\u0022: \u0022get_v1_pizzas\u0022,\r\n        \u0022description\u0022: \u0022List available pizzas.\u0022,\r\n        \u0022security\u0022: [\r\n          {\r\n            \u0022bearerAuth\u0022: []\r\n          }\r\n        ]\r\n      }\r\n    },\r\n    \u0022/v1/orders\u0022: {\r\n      \u0022post\u0022: {\r\n        \u0022summary\u0022: \u0022POST /v1/orders \\u2014 checkout with coupon\u0022,\r\n        \u0022operationId\u0022: \u0022post_v1_orders\u0022,\r\n        \u0022description\u0022: \u0022Submit order; client total is discarded \\u2014 server re-prices authoritatively.\u0022,\r\n        \u0022requestBody\u0022: {\r\n          \u0022required\u0022: true,\r\n          \u0022content\u0022: {\r\n            \u0022application/json\u0022: {\r\n              \u0022example\u0022: {\r\n                \u0022couponCode\u0022: \u0022SAVE10\u0022,\r\n                \u0022cart\u0022: {\r\n                  \u0022lines\u0022: [\r\n                    {\r\n                      \u0022lineId\u0022: \u0022line-1\u0022,\r\n                      \u0022pizzaId\u0022: \u0022margherita\u0022,\r\n                      \u0022category\u0022: \u0022classic\u0022,\r\n                      \u0022unitPrice\u0022: 9.50,\r\n                      \u0022quantity\u0022: 2\r\n                    },\r\n                    {\r\n                      \u0022lineId\u0022: \u0022line-2\u0022,\r\n                      \u0022pizzaId\u0022: \u0022bbq-chicken\u0022,\r\n                      \u0022category\u0022: \u0022meat\u0022,\r\n                      \u0022unitPrice\u0022: 12.00,\r\n                      \u0022quantity\u0022: 1\r\n                    }\r\n                  ]\r\n                }\r\n              }\r\n            }\r\n          }\r\n        },\r\n        \u0022security\u0022: [\r\n          {\r\n            \u0022bearerAuth\u0022: []\r\n          }\r\n        ]\r\n      }\r\n    },\r\n    \u0022/v1/orders/{orderId}\u0022: {\r\n      \u0022get\u0022: {\r\n        \u0022summary\u0022: \u0022GET /v1/orders/{orderId}\u0022,\r\n        \u0022operationId\u0022: \u0022get_v1_orders_orderId\u0022,\r\n        \u0022description\u0022: \u0022Read order by id.\u0022,\r\n        \u0022security\u0022: [\r\n          {\r\n            \u0022bearerAuth\u0022: []\r\n          }\r\n        ]\r\n      }\r\n    },\r\n    \u0022/openapi/v1.json\u0022: {\r\n      \u0022get\u0022: {\r\n        \u0022summary\u0022: \u0022GET /openapi/v1.json\u0022,\r\n        \u0022operationId\u0022: \u0022get_openapi_v1.json\u0022,\r\n        \u0022description\u0022: \u0022Live OpenAPI JSON while running in Development.\u0022\r\n      }\r\n    }\r\n  },\r\n  \u0022components\u0022: {\r\n    \u0022securitySchemes\u0022: {\r\n      \u0022bearerAuth\u0022: {\r\n        \u0022type\u0022: \u0022http\u0022,\r\n        \u0022scheme\u0022: \u0022bearer\u0022,\r\n        \u0022bearerFormat\u0022: \u0022JWT\u0022\r\n      }\r\n    }\r\n  }\r\n}"
+    }
+  ]
+}
