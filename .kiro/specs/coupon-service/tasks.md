@@ -24,7 +24,7 @@ Hour figures are focused-work estimates. `[D3]` means inside the committed 2–3
 - [x] 1.4 Parser with `ParseBudget` and `PolicySyntaxException`; single-key operator dispatch _(AC-2.1, AC-2.5)_ (1.5 h)
 - [x] 1.5 Fact registry, `FactDescriptor`, `FactCost`, and the documented fact vocabulary (1 h)
 - [x] 1.6 Manifest generated from the registry _(AC-6.2)_ (0.5 h)
-- [ ] 1.7 Validator: unknown facts, type compatibility, quantifier scope rules; reports **all** offending nodes _(AC-2.3, AC-2.4)_ (1.25 h)
+- [x] 1.7 Validator: unknown facts, type compatibility, quantifier scope rules; reports **all** offending nodes _(AC-2.3, AC-2.4)_ (1.25 h)
 - [ ] 1.8 Compiler: closures over delegates, cost-ordered `all`/`any`, node ids _(AC-3.1, P-6)_ (1.5 h)
 - [ ] 1.9 `EvalScope`: fact memoisation, injected clock, trace collector, near-miss capture _(AC-1.3, AC-3.3, AC-3.7, AC-2.7)_ (1 h)
 - [ ] 1.10 Canonical JSON hashing and bounded compiled-policy cache _(AC-3.4, AC-3.5, NFR-4)_ (0.75 h)
