@@ -9,6 +9,8 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
@@ -20,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\CouponService.Api\CouponService.Api.csproj" />
+    <ProjectReference Include="..\..\src\CouponService.Infrastructure\CouponService.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
