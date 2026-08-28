@@ -28,4 +28,8 @@
     </ProjectReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Contract\Snapshots\coupon-service-openapi.v1.json" />
+  </ItemGroup>
+
 </Project>
