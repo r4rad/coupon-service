@@ -9,6 +9,9 @@ public static class EffectEngine
     [
         new PercentageEffectHandler(),
         new FixedAmountEffectHandler(),
+        new CheapestFreeEffectHandler(),
+        new NthItemEffectHandler(),
+        new TieredEffectHandler(),
         new SumEffectHandler(),
         new BestOfEffectHandler(),
         new CapEffectHandler(),
