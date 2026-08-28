@@ -1,3 +1,6 @@
+using CouponService.Application.Validation;
+using CouponService.Domain;
+
 namespace CouponService.Application.Redemption;
 
 public interface ICouponRedeemer
@@ -5,7 +8,8 @@ public interface ICouponRedeemer
     Task<ReservationResult> ReserveAsync(
         string code,
         string orderId,
-        string customerId,
+        Cart cart,
+        CustomerContext customer,
         CancellationToken cancellationToken = default);
 
     Task<RedemptionResult> ConfirmAsync(string orderId, CancellationToken cancellationToken = default);
