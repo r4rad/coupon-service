@@ -1,5 +1,6 @@
 using CouponService.Api.DependencyInjection;
 using CouponService.Api.Middleware;
+using CouponService.Api.OpenApi;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json.Serialization;
@@ -59,7 +60,8 @@ builder.Services.AddOpenApi(options =>
         document.Info.Title = "Coupon Service API";
         document.Info.Version = "v1";
         document.Info.Description =
-            "Coupon validation, pricing preview, redemption lifecycle, and policy administration.";
+            "Coupon validation, pricing preview, redemption lifecycle, and policy administration. " +
+            "Interactive docs: /scalar (try it out) · /redoc (reference) · /openapi/v1.json.";
         return Task.CompletedTask;
     });
 });
@@ -72,9 +74,9 @@ app.UseExceptionHandler();
 
 app.UseStatusCodePages();
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 {
-    app.MapOpenApi();
+    app.MapApiDocumentation("Coupon Service API");
 }
 
 app.UseHttpsRedirection();

@@ -12,11 +12,15 @@ namespace CouponService.Api.Controllers.V1;
 
 [ApiController]
 [Route("v1/reservations")]
+[Tags("Reservations")]
 public sealed class ReservationsController(
     ICouponRedeemer redeemer,
     IOptions<CouponServiceOptions> options) : ControllerBase
 {
     [HttpPost]
+    [EndpointSummary("Reserve a coupon for checkout")]
+    [EndpointDescription(
+        "Authoritative re-price and reserve a use. Returns 201 with the audited breakdown, or 409 with UsageLimitReached when the cap is consumed. Client-supplied totals are ignored.")]
     [ProducesResponseType(typeof(ReservationCreatedResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ReservationConflictResponse), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
@@ -42,9 +46,11 @@ public sealed class ReservationsController(
     }
 
     [HttpPost("{orderId}/confirm")]
+    [EndpointSummary("Confirm a reservation")]
+    [EndpointDescription("Commits a reserved use after the order is persisted. Idempotent for the same orderId.")]
     [ProducesResponseType(typeof(ReservationTransitionResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ReservationConflictResponse), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ReservationStateConflictResponse), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<ReservationTransitionResponse>> ConfirmAsync(
         string orderId,
         CancellationToken cancellationToken)
@@ -65,9 +71,11 @@ public sealed class ReservationsController(
     }
 
     [HttpPost("{orderId}/release")]
+    [EndpointSummary("Release a reservation")]
+    [EndpointDescription("Returns a reserved use when checkout fails. Idempotent for the same orderId.")]
     [ProducesResponseType(typeof(ReservationTransitionResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ReservationConflictResponse), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ReservationStateConflictResponse), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<ReservationTransitionResponse>> ReleaseAsync(
         string orderId,
         [FromBody] ReleaseRequest request,

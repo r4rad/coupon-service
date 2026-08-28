@@ -11,6 +11,8 @@
         "tags": [
           "Coupons"
         ],
+        "summary": "Preview coupon pricing",
+        "description": "Advisory evaluation against a basket. Returns 200 for applied and rejected outcomes with a full price breakdown. Never reserves or writes.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -80,6 +82,8 @@
         "tags": [
           "Reservations"
         ],
+        "summary": "Reserve a coupon for checkout",
+        "description": "Authoritative re-price and reserve a use. Returns 201 with the audited breakdown, or 409 with UsageLimitReached when the cap is consumed. Client-supplied totals are ignored.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -169,6 +173,8 @@
         "tags": [
           "Reservations"
         ],
+        "summary": "Confirm a reservation",
+        "description": "Commits a reserved use after the order is persisted. Idempotent for the same orderId.",
         "parameters": [
           {
             "name": "orderId",
@@ -225,17 +231,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReservationConflictResponse"
+                  "$ref": "#/components/schemas/ReservationStateConflictResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReservationConflictResponse"
+                  "$ref": "#/components/schemas/ReservationStateConflictResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReservationConflictResponse"
+                  "$ref": "#/components/schemas/ReservationStateConflictResponse"
                 }
               }
             }
@@ -248,6 +254,8 @@
         "tags": [
           "Reservations"
         ],
+        "summary": "Release a reservation",
+        "description": "Returns a reserved use when checkout fails. Idempotent for the same orderId.",
         "parameters": [
           {
             "name": "orderId",
@@ -324,17 +332,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReservationConflictResponse"
+                  "$ref": "#/components/schemas/ReservationStateConflictResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReservationConflictResponse"
+                  "$ref": "#/components/schemas/ReservationStateConflictResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReservationConflictResponse"
+                  "$ref": "#/components/schemas/ReservationStateConflictResponse"
                 }
               }
             }
@@ -642,6 +650,17 @@
           },
           "policyContentHash": {
             "type": "string"
+          }
+        }
+      },
+      "ReservationStateConflictResponse": {
+        "required": [
+          "state"
+        ],
+        "type": "object",
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/RedemptionState"
           }
         }
       },

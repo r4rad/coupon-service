@@ -8,7 +8,6 @@
     <OpenApiGenerateDocumentsOnBuild>true</OpenApiGenerateDocumentsOnBuild>
     <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)\..\..\docs\api\generated</OpenApiDocumentsDirectory>
     <OpenApiGenerateDocumentsOptions>--file-name order-api-openapi</OpenApiGenerateDocumentsOptions>
-    <SyncInsomniaOnBuild>true</SyncInsomniaOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,9 +16,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Scalar.AspNetCore" />
   </ItemGroup>
-
-  <Import Project="$(MSBuildProjectDirectory)\..\..\build\sync-insomnia.targets"
-          Condition="Exists('$(MSBuildProjectDirectory)\..\..\build\sync-insomnia.targets')" />
 
 </Project>
