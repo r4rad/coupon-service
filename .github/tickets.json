@@ -1,0 +1,567 @@
+{
+  "$comment": "Source of truth for the ticket set. scripts/generate-ticket-docs.ps1 renders .github/tickets/*.md from this, including the paste-ready prompt in each ticket; scripts/gh-bootstrap.ps1 uploads those same files as GitHub issue bodies. Standing conventions live in AGENTS.md and are deliberately NOT repeated per ticket.",
+  "project": {
+    "title": "Coupon Service delivery",
+    "description": "Policy-engine-driven coupon service: engine, redemption lifecycle, API, tests, infrastructure."
+  },
+  "labels": [
+    { "name": "wave-0", "color": "ededed", "description": "Foundations" },
+    { "name": "wave-1", "color": "1d76db", "description": "Policy engine core" },
+    { "name": "wave-2", "color": "0e8a16", "description": "Effects and pricing" },
+    { "name": "wave-3", "color": "5319e7", "description": "Application services and redemption" },
+    { "name": "wave-4", "color": "b60205", "description": "API, auth, logging" },
+    { "name": "wave-5", "color": "fbca04", "description": "BDD suite" },
+    { "name": "wave-6", "color": "006b75", "description": "Cosmos adapter" },
+    { "name": "wave-7", "color": "d93f0b", "description": "Infrastructure and pipeline" },
+    { "name": "area:build", "color": "c5def5", "description": "Solution, packages, analyzers" },
+    { "name": "area:engine", "color": "c5def5", "description": "Parser, compiler, evaluator" },
+    { "name": "area:domain", "color": "c5def5", "description": "Money, cart, pricing" },
+    { "name": "area:api", "color": "c5def5", "description": "HTTP surface" },
+    { "name": "area:data", "color": "c5def5", "description": "Persistence" },
+    { "name": "area:security", "color": "c5def5", "description": "Auth and guardrails" },
+    { "name": "area:infra", "color": "c5def5", "description": "Bicep and pipeline" },
+    { "name": "area:test", "color": "c5def5", "description": "Test suites" },
+    { "name": "blocked:azure", "color": "e99695", "description": "Cannot be verified until an Azure subscription exists" },
+    { "name": "size:S", "color": "f9d0c4", "description": "Small" },
+    { "name": "size:M", "color": "f9d0c4", "description": "Medium" },
+    { "name": "size:L", "color": "f9d0c4", "description": "Large" }
+  ],
+  "tickets": [
+    {
+      "id": "CS-01",
+      "title": "Solution wiring, central packages and build gates",
+      "wave": 0,
+      "size": "M",
+      "labels": ["wave-0", "area:build"],
+      "depends": [],
+      "goal": "Bring the half-scaffolded repository to a clean, buildable, committed baseline. Eleven projects exist on disk but CouponService.slnx is empty, template files remain, and there are no commits yet.",
+      "scope": [
+        "CouponService.slnx",
+        "src/**/*.csproj",
+        "tests/**/*.csproj",
+        "Directory.Packages.props",
+        "tests/CouponService.UnitTests/Architecture/"
+      ],
+      "outOfScope": ["Any production logic. This ticket only makes the skeleton build and enforce its own rules."],
+      "acceptance": ["NFR-7", "AC-10.5"],
+      "steps": [
+        "Add all eleven projects under src/ and tests/ to CouponService.slnx.",
+        "Delete template cruft: Class1.cs from every class library, and the weather forecast sample controller and model from both web API projects.",
+        "Wire project references: Engine to Domain only; Application to Domain and Engine; Infrastructure to Application; Api to Application and Infrastructure; EngineTests to Engine; UnitTests to Application, Infrastructure and Engine; ApiTests to Api; IntegrationTests to Infrastructure. OrderApi and the Bdd project stay standalone and talk HTTP, which keeps the service boundary honest.",
+        "Introduce Directory.Packages.props with ManagePackageVersionsCentrally, and move every version out of individual csproj files.",
+        "Add an architecture test asserting that CouponService.Engine's transitive assembly references contain no ASP.NET Core, Azure or Cosmos assembly. Assert on the compiled assembly's referenced names so the rule cannot be bypassed by a csproj edit."
+      ],
+      "verify": [
+        "dotnet build CouponService.slnx",
+        "dotnet test tests/CouponService.UnitTests"
+      ]
+    },
+    {
+      "id": "CS-02",
+      "title": "Domain primitives and the money contract",
+      "wave": 0,
+      "size": "M",
+      "labels": ["wave-0", "area:domain"],
+      "depends": ["CS-01"],
+      "goal": "Establish the money and basket types every later ticket depends on, with rounding behaviour pinned by tests.",
+      "scope": ["src/CouponService.Domain/", "tests/CouponService.UnitTests/Domain/"],
+      "outOfScope": ["Policy AST types, which belong to CS-03.", "Any discount calculation, which belongs to CS-09."],
+      "acceptance": ["AC-1.5", "AC-1.4", "NFR-3"],
+      "steps": [
+        "Add Cart, CartLine (line id, pizza id, category, unit price, quantity) and a Money helper exposing the rounding rule in exactly one place.",
+        "Add PriceBreakdown (currency, line totals, subtotal, discount, total), DiscountPlan and LineAllocation as described in design.md.",
+        "Line total is unit price times quantity rounded to 2dp; subtotal is the sum of already-rounded line totals. Encode that ordering, it is observable.",
+        "Add an IClock abstraction plus a SystemClock and a FixedClock for tests.",
+        "Test the worked example from the architecture document: 2 at 9.50 plus 1 at 12.00 gives subtotal 31.00, and 10 percent gives discount 3.10 and total 27.90. Also test that a discount cannot drive a total below zero, and that a midpoint value rounds away from zero."
+      ],
+      "verify": ["dotnet test tests/CouponService.UnitTests --filter FullyQualifiedName~Domain"]
+    },
+    {
+      "id": "CS-03",
+      "title": "Value model and expression AST",
+      "wave": 1,
+      "size": "S",
+      "labels": ["wave-1", "area:engine"],
+      "depends": ["CS-01"],
+      "goal": "Define the typed value and the seven expression node types the whole engine is built on. Deliberately parallel to CS-02: no dependency between them.",
+      "scope": ["src/CouponService.Engine/Ast/", "tests/CouponService.EngineTests/Ast/"],
+      "outOfScope": ["Parsing from JSON (CS-04).", "Compilation (CS-07)."],
+      "acceptance": ["AC-2.1"],
+      "steps": [
+        "Add Value and ValueKind exactly as specified in design.md, as a readonly record struct over Number, Text, Bool and List.",
+        "Add the Expr record hierarchy: ConstExpr, FactExpr, LogicalExpr, CompareExpr, MembershipExpr, QuantifierExpr, AggregateExpr, ArithmeticExpr, plus the operator enums and Selector.",
+        "Give Value accessor methods that throw a typed engine exception on a kind mismatch, rather than returning a default. A silent default here would become a wrong price.",
+        "Test kind mismatches, list equality semantics and decimal precision preservation."
+      ],
+      "verify": ["dotnet test tests/CouponService.EngineTests --filter FullyQualifiedName~Ast"]
+    },
+    {
+      "id": "CS-04",
+      "title": "Policy parser with depth and node budgets",
+      "wave": 1,
+      "size": "L",
+      "labels": ["wave-1", "area:engine", "area:security"],
+      "depends": ["CS-03"],
+      "goal": "Parse a policy condition from JSON into the AST, using the single-key operator dispatch, with budgets enforced as a security control.",
+      "scope": ["src/CouponService.Engine/Parsing/", "tests/CouponService.EngineTests/Parsing/"],
+      "outOfScope": ["Fact existence and type checking, which is CS-06.", "Effect parsing, which is CS-09."],
+      "acceptance": ["AC-2.1", "AC-2.5"],
+      "steps": [
+        "Implement the parser over System.Text.Json.JsonElement following the switch in section 5.6 of docs/solution-architecture.md. An object must have exactly one property; the property name is the operator.",
+        "Support every condition form in the section 5.4 grammar table: constant, fact, all, any, not, the six comparisons, in, between, every, some, sum, count, min, max, and the arithmetic operators.",
+        "Implement ParseBudget with configurable maximum node count and nesting depth, spent on every node, throwing PolicyBudgetException when exceeded.",
+        "Throw PolicySyntaxException carrying a JSON path for the offending node, never a bare message.",
+        "Test each operator round-trips; an object with two keys is rejected; an unknown operator is rejected; a deeply nested and a very wide document are both rejected by budget, before any evaluation happens."
+      ],
+      "verify": ["dotnet test tests/CouponService.EngineTests --filter FullyQualifiedName~Parsing"]
+    },
+    {
+      "id": "CS-05",
+      "title": "Fact registry, fact vocabulary and engine manifest",
+      "wave": 1,
+      "size": "M",
+      "labels": ["wave-1", "area:engine"],
+      "depends": ["CS-03"],
+      "goal": "Provide the typed, cost-classed fact vocabulary that is the engine's only contact with the outside world, and the self-describing manifest generated from it.",
+      "scope": ["src/CouponService.Engine/Facts/", "src/CouponService.Engine/Manifest/", "tests/CouponService.EngineTests/Facts/"],
+      "outOfScope": ["Wiring real Cosmos-backed fact resolvers, which happens in CS-12 and CS-23."],
+      "acceptance": ["AC-6.2"],
+      "steps": [
+        "Add FactCost, FactDescriptor and IFactRegistry per design.md, with async ValueTask resolvers per decision P-5.",
+        "Register the documented vocabulary: cart.subtotal, cart.lineCount, cart.totalQuantity as Pure; line.category, line.unitPrice, line.quantity as Pure within quantifier scope; customer.confirmedOrderCount and customer.isFirstOrder as Cached; coupon.uses.total and coupon.uses.byCustomer as RemoteRead; time.utcNow, time.localDayOfWeek and time.localHour as Pure from the injected clock.",
+        "Generate an EngineManifest from the registry listing every fact with type and cost, every operator, every effect and the configured budgets. It must be generated, never hand-maintained, so it cannot drift.",
+        "Test that every registered fact appears in the manifest, that a duplicate registration is rejected, and that resolving an unregistered path fails with a typed exception."
+      ],
+      "verify": ["dotnet test tests/CouponService.EngineTests --filter FullyQualifiedName~Facts"]
+    },
+    {
+      "id": "CS-06",
+      "title": "Policy validator with full error reporting",
+      "wave": 1,
+      "size": "M",
+      "labels": ["wave-1", "area:engine"],
+      "depends": ["CS-04", "CS-05"],
+      "goal": "Reject an invalid policy at write time so the request path can trust every stored policy. This is what makes the engine safe to be data-driven.",
+      "scope": ["src/CouponService.Engine/Validation/", "tests/CouponService.EngineTests/Validation/"],
+      "outOfScope": ["The HTTP 400 shape, which is CS-17."],
+      "acceptance": ["AC-2.3", "AC-2.4", "AC-2.10"],
+      "steps": [
+        "Validate every FactExpr path against the registry, and reject unknown paths naming the path and its JSON location.",
+        "Type-check comparisons, membership, arithmetic and aggregates against declared fact kinds, so a type error surfaces at write time and never at evaluation time.",
+        "Validate quantifier scope: a line.* fact is legal only inside an every or some over cart.lines, and illegal at the top level.",
+        "Validate engineSchema and refuse a version the engine does not implement.",
+        "Report every offending node, not just the first. A campaign manager fixing one typo per round trip is a bad tool.",
+        "Test each rejection class, and specifically assert that a document with three separate errors reports all three."
+      ],
+      "verify": ["dotnet test tests/CouponService.EngineTests --filter FullyQualifiedName~Validation"]
+    },
+    {
+      "id": "CS-07",
+      "title": "Compiler with cost ordering, and the evaluation scope",
+      "wave": 1,
+      "size": "L",
+      "labels": ["wave-1", "area:engine"],
+      "depends": ["CS-04", "CS-05"],
+      "goal": "Compile the AST to closures, ordering logical operands cheapest-first so short-circuiting avoids network round trips, and evaluate with memoised facts and a trace that captures near misses.",
+      "scope": ["src/CouponService.Engine/Compilation/", "src/CouponService.Engine/Evaluation/", "tests/CouponService.EngineTests/Compilation/"],
+      "outOfScope": ["Caching compiled policies across requests, which is CS-08.", "Effects, which are CS-09."],
+      "acceptance": ["AC-3.1", "AC-3.2", "AC-3.3", "AC-1.3", "AC-2.7", "AC-3.7", "AC-10.2"],
+      "steps": [
+        "Compile to the Compiled delegate from design.md: closures over delegates, not System.Linq.Expressions, per decision P-6.",
+        "Every compiled node returns its aggregate FactCost. Order the operands of all and any by ascending cost, which is sound because every operator is pure.",
+        "EvalScope owns per-evaluation fact memoisation, the injected clock, the trace collector and the quantifier line scope.",
+        "Capture near misses always, on every failed numeric comparison, recording actual, required and shortfall. Build the full node-by-node trace only when explicitly requested, per decision P-7.",
+        "The headline test: register a counting fact provider for coupon.uses.total, evaluate a policy whose cheap subtotal predicate fails, and assert the counter was invoked exactly zero times. This proves the design claim rather than asserting it.",
+        "Also test operand reordering, that a fact referenced three times resolves once, operator truth tables, and that two evaluations with a FixedClock produce identical output."
+      ],
+      "verify": ["dotnet test tests/CouponService.EngineTests --filter FullyQualifiedName~Compilation"]
+    },
+    {
+      "id": "CS-08",
+      "title": "Content hashing and the bounded compiled-policy cache",
+      "wave": 1,
+      "size": "S",
+      "labels": ["wave-1", "area:engine"],
+      "depends": ["CS-07"],
+      "goal": "Parse and compile once, execute many, keyed on the policy's content so an edit invalidates itself with no explicit cache call.",
+      "scope": ["src/CouponService.Engine/Caching/", "tests/CouponService.EngineTests/Caching/"],
+      "outOfScope": ["Distributed caching. In-process only, deliberately."],
+      "acceptance": ["AC-3.4", "AC-3.5", "AC-3.6", "NFR-4"],
+      "steps": [
+        "Canonicalise the policy JSON (ordered properties, normalised number formatting) then SHA-256 it. Two documents differing only in key order or whitespace must hash identically.",
+        "Cache compiled policies on that hash with a bounded size and sliding expiry, so neither memory nor coupon-code enumeration is unbounded.",
+        "Cache negative lookups briefly, to blunt enumeration of non-existent codes.",
+        "Test that recompilation happens exactly once for repeated evaluation, that changing one threshold produces a different hash and a recompile, and that the cache evicts under its size bound."
+      ],
+      "verify": ["dotnet test tests/CouponService.EngineTests --filter FullyQualifiedName~Caching"]
+    },
+    {
+      "id": "CS-09",
+      "title": "Core effect handlers and the price calculator",
+      "wave": 2,
+      "size": "L",
+      "labels": ["wave-2", "area:engine", "area:domain"],
+      "depends": ["CS-02", "CS-07"],
+      "goal": "Turn an effect expression into a discount plan allocated per line, including the composition operators that a discount enum could never express.",
+      "scope": ["src/CouponService.Engine/Effects/", "src/CouponService.Application/Pricing/", "tests/CouponService.EngineTests/Effects/"],
+      "outOfScope": ["cheapestFree, nthItem and tiered, which are CS-10."],
+      "acceptance": ["AC-1.1", "AC-1.4", "AC-2.8", "AC-2.9"],
+      "steps": [
+        "Add IEffectHandler and EffectScope per design.md, plus selector evaluation so a where clause selects lines consistently with the condition grammar.",
+        "Implement percentage, fixedAmount, sum, bestOf and cap.",
+        "bestOf must compute every branch and select the largest total, never guess by inspecting shape.",
+        "cap must clamp the total and rescale per-line allocations proportionally, re-rounding so allocations always sum exactly to the capped total. Test the rounding residue case where naive proportional scaling is one cent off.",
+        "Implement PriceCalculator taking a decision, never a coupon code, so an unvalidated discount cannot be applied.",
+        "Test the capped best-of example from the architecture document: 15 percent over a 29.00 vegetarian base against 5.00 flat, capped at 10.00."
+      ],
+      "verify": ["dotnet test tests/CouponService.EngineTests --filter FullyQualifiedName~Effects"]
+    },
+    {
+      "id": "CS-10",
+      "title": "Advanced effect handlers: cheapestFree, nthItem, tiered",
+      "wave": 2,
+      "size": "M",
+      "labels": ["wave-2", "area:engine"],
+      "depends": ["CS-09"],
+      "goal": "Complete the effect grammar. Each of these is a handler behind IEffectHandler and must require zero change to the parser, compiler or evaluator, which is the design claim being tested.",
+      "scope": ["src/CouponService.Engine/Effects/", "tests/CouponService.EngineTests/Effects/"],
+      "outOfScope": ["Any change to engine core files. If one seems necessary, stop and say so in the pull request, because that would contradict the architecture."],
+      "acceptance": ["AC-2.2", "AC-2.6"],
+      "steps": [
+        "cheapestFree: the cheapest N lines from a selector become free, expanding quantities so a line of quantity 3 counts as three candidate units.",
+        "nthItem: every Nth unit from a selector receives a percentage discount, which covers buy-two-get-one.",
+        "tiered: pick the highest tier whose threshold the driving expression meets, with no tier matching yielding no discount rather than an error.",
+        "Add a test asserting no file under Engine/Compilation or Engine/Parsing changed in this ticket, by keeping the handlers self-registering through the handler collection.",
+        "Test unit expansion, ties in cheapest selection resolved deterministically, an empty selector, and a tier boundary exactly on the threshold."
+      ],
+      "verify": ["dotnet test tests/CouponService.EngineTests --filter FullyQualifiedName~Effects"]
+    },
+    {
+      "id": "CS-11",
+      "title": "Property-based invariant tests for pricing",
+      "wave": 2,
+      "size": "S",
+      "labels": ["wave-2", "area:test"],
+      "depends": ["CS-10"],
+      "goal": "Assert the invariants that must hold for every basket and policy, not only the ones we thought to write examples for.",
+      "scope": ["tests/CouponService.EngineTests/Properties/"],
+      "outOfScope": ["Changing production code. If a property fails, that is a real bug, so fix it and say so in the pull request."],
+      "acceptance": ["AC-10.3"],
+      "packages": ["FsCheck.Xunit"],
+      "steps": [
+        "Write generators for arbitrary baskets and for arbitrary well-typed policy documents across the whole grammar.",
+        "Properties: discount is never negative; discount never exceeds the eligible base; allocations always sum exactly to the discount total; total plus discount always equals subtotal; evaluation with a fixed clock is deterministic across runs.",
+        "Shrink to a minimal counterexample on failure and print the offending policy JSON, so a failure is actionable rather than a wall of noise."
+      ],
+      "verify": ["dotnet test tests/CouponService.EngineTests --filter FullyQualifiedName~Properties"]
+    },
+    {
+      "id": "CS-12",
+      "title": "Application services and in-memory repositories",
+      "wave": 3,
+      "size": "M",
+      "labels": ["wave-3", "area:domain"],
+      "depends": ["CS-08", "CS-09"],
+      "goal": "Put the clean interfaces from the brief in place, with in-memory persistence faithful enough to test optimistic concurrency without a database.",
+      "scope": ["src/CouponService.Application/", "src/CouponService.Infrastructure/InMemory/", "tests/CouponService.UnitTests/Application/"],
+      "outOfScope": ["Cosmos, which is CS-23.", "HTTP, which is CS-15."],
+      "acceptance": ["AC-1.1", "AC-1.2", "AC-1.6", "AC-3.6"],
+      "steps": [
+        "Define ICouponValidator, IPriceCalculator, ICouponRedeemer, PolicyDecision, RejectionReason as a closed enum, and the repository ports, per design.md.",
+        "PolicyDecision carries status, reason, plan, near-miss hint, optional trace and the policy content hash.",
+        "Implement in-memory policy and redemption repositories with real ETag semantics: a write with a stale ETag must fail, so CAS logic is genuinely exercised.",
+        "Implement the validate-then-price flow, and assert preview performs no writes at all.",
+        "Test that a rejected coupon still returns a full-price breakdown, and that the content hash on the decision matches the evaluated policy."
+      ],
+      "verify": ["dotnet test tests/CouponService.UnitTests --filter FullyQualifiedName~Application"]
+    },
+    {
+      "id": "CS-13",
+      "title": "Redemption lifecycle: reserve, confirm, release, expire",
+      "wave": 3,
+      "size": "L",
+      "labels": ["wave-3", "area:domain"],
+      "depends": ["CS-12"],
+      "goal": "Enforce usage caps across concurrent checkouts without a distributed lock, and make retries safe.",
+      "scope": ["src/CouponService.Application/Redemption/", "tests/CouponService.UnitTests/Redemption/"],
+      "outOfScope": ["The Cosmos transactional batch, which is CS-23. Here the semantics are proven against the in-memory repository."],
+      "acceptance": ["AC-4.1", "AC-4.2", "AC-4.3", "AC-4.4", "AC-4.5", "AC-4.6", "AC-4.7", "AC-4.8"],
+      "steps": [
+        "Implement reserve: re-evaluate the policy authoritatively, check global and per-customer caps, then insert a redemption and increment the counter under an ETag precondition.",
+        "Implement confirm and release as idempotent transitions, and stamp a TTL while a reservation is Reserved so an abandoned checkout cannot permanently consume a use.",
+        "orderId is the idempotency key. A repeated reserve for the same orderId returns the existing reservation and must not increment any counter.",
+        "Retry an ETag conflict with bounded jittered backoff, three attempts, then reject with UsageLimitReached.",
+        "The important test: drive two concurrent reservations at a cap with one use left and assert exactly one succeeds. Then assert confirm twice and release twice are both no-ops."
+      ],
+      "verify": ["dotnet test tests/CouponService.UnitTests --filter FullyQualifiedName~Redemption"]
+    },
+    {
+      "id": "CS-14",
+      "title": "Automatic policies: storage key, cached index and resolution",
+      "wave": 3,
+      "size": "M",
+      "labels": ["wave-3", "area:domain"],
+      "depends": ["CS-12"],
+      "goal": "Support promotions that apply with no coupon code entered, using the partition key convention from decision P-3 and the cached index from P-4.",
+      "scope": ["src/CouponService.Application/Policies/", "src/CouponService.Infrastructure/InMemory/", "tests/CouponService.UnitTests/Policies/"],
+      "outOfScope": ["The Cosmos query itself, which is CS-23. Implement against the repository port."],
+      "acceptance": ["AC-6.7"],
+      "steps": [
+        "Apply the pk convention: pk equals the code for coded policies, and AUTO# followed by the policyId for automatic ones. Point reads by code stay a single-partition read.",
+        "Implement IAutomaticPolicyIndex returning active and shadow automatic policies, cached for 60 seconds against the injected clock, refreshed by a filtered query.",
+        "Implement candidate resolution when several policies apply: order by priority, respect the stackable flag, and break ties deterministically in the customer's favour.",
+        "Test that the cache is not re-queried within the window and is refreshed after it, using FixedClock rather than sleeping.",
+        "Test that a coded and an automatic policy both matching resolve per the documented rule, not by insertion order."
+      ],
+      "verify": ["dotnet test tests/CouponService.UnitTests --filter FullyQualifiedName~Policies"]
+    },
+    {
+      "id": "CS-15",
+      "title": "API host, preview endpoint and health probes",
+      "wave": 4,
+      "size": "M",
+      "labels": ["wave-4", "area:api"],
+      "depends": ["CS-13", "CS-14"],
+      "goal": "Expose preview over HTTP with the documented contract, where a rejected coupon is a business outcome and not a transport error.",
+      "scope": ["src/CouponService.Api/", "tests/CouponService.ApiTests/Preview/"],
+      "outOfScope": ["Auth, which is CS-18.", "Serilog, which is CS-19.", "Admin endpoints, which are CS-17."],
+      "acceptance": ["AC-1.2", "AC-1.3", "AC-1.6"],
+      "steps": [
+        "Set up the host, DI, strongly typed options with validation on start, and OpenAPI.",
+        "POST /v1/coupons/preview returns 200 for both applied and rejected, with status, reason, near-miss hint and a full breakdown.",
+        "Return RFC 7807 problem details for genuine errors, always including the correlation id.",
+        "Add /health/live and /health/ready, where readiness checks the policy repository.",
+        "Version every route under /v1 so APIM routing mirrors it later.",
+        "Test that an expired coupon returns 200 with reason Expired, that a malformed body returns 400 with field detail, and that preview writes nothing."
+      ],
+      "verify": ["dotnet test tests/CouponService.ApiTests --filter FullyQualifiedName~Preview"]
+    },
+    {
+      "id": "CS-16",
+      "title": "Reservation endpoints",
+      "wave": 4,
+      "size": "S",
+      "labels": ["wave-4", "area:api"],
+      "depends": ["CS-15"],
+      "goal": "Expose the authoritative reserve, confirm and release operations that only the Order API may call.",
+      "scope": ["src/CouponService.Api/Controllers/", "tests/CouponService.ApiTests/Reservations/"],
+      "outOfScope": ["Role enforcement, which is CS-18, though the endpoints must be authored ready for it."],
+      "acceptance": ["AC-4.1", "AC-4.2", "AC-4.3", "AC-4.5"],
+      "steps": [
+        "POST /v1/reservations returns 201 with an authoritative breakdown, or 409 with reason UsageLimitReached.",
+        "POST /v1/reservations/{orderId}/confirm and /release, both idempotent, 404 for an unknown order.",
+        "These routes must be registered so they can be bound to internal ingress only at deploy time. Do not expose them on the same route prefix as customer endpoints.",
+        "Test the 409 path, both idempotent repeats, and that a reserve response total is independent of anything the caller supplied."
+      ],
+      "verify": ["dotnet test tests/CouponService.ApiTests --filter FullyQualifiedName~Reservations"]
+    },
+    {
+      "id": "CS-17",
+      "title": "Admin policy API and manifest endpoint",
+      "wave": 4,
+      "size": "M",
+      "labels": ["wave-4", "area:api"],
+      "depends": ["CS-15"],
+      "goal": "Let a campaign manager create and govern policies through an API, validated against the manifest before anything is stored.",
+      "scope": ["src/CouponService.Api/Controllers/", "tests/CouponService.ApiTests/Admin/"],
+      "outOfScope": ["Simulate and shadow mode, which are deferred to the post-Azure wave.", "Any admin UI."],
+      "acceptance": ["AC-6.1", "AC-6.2", "AC-6.3", "AC-6.4", "AC-2.3"],
+      "steps": [
+        "GET and POST /v1/admin/policies, GET, PUT and DELETE /v1/admin/policies/{id}.",
+        "Validate every write against the engine manifest and return 400 listing all offending nodes, so an invalid policy can never reach the request path.",
+        "PUT requires a matching ETag and returns 412 on a stale write.",
+        "DELETE transitions to Archived and never removes the document, because historical orders must stay explainable.",
+        "GET /v1/policy-engine/manifest returns the generated manifest.",
+        "Test the 400 body shape for an unknown fact, the 412 path, and that a deleted policy is still readable as Archived."
+      ],
+      "verify": ["dotnet test tests/CouponService.ApiTests --filter FullyQualifiedName~Admin"]
+    },
+    {
+      "id": "CS-18",
+      "title": "Authentication, roles, and the test-token startup guard",
+      "wave": 4,
+      "size": "M",
+      "labels": ["wave-4", "area:security"],
+      "depends": ["CS-16", "CS-17"],
+      "goal": "Enforce identity and least privilege, and make the local test-token mechanism provably impossible to enable in a deployed environment. Decision P-8 exists because this is graded.",
+      "scope": ["src/CouponService.Api/Authentication/", "src/CouponService.Api/Program.cs", "tests/CouponService.ApiTests/Auth/"],
+      "outOfScope": ["Real Entra tenant configuration, which needs credentials we do not have. Bind it from options with placeholders."],
+      "acceptance": ["AC-7.1", "AC-7.2", "AC-7.3", "AC-7.4", "AC-7.5"],
+      "packages": ["Microsoft.AspNetCore.Authentication.JwtBearer"],
+      "steps": [
+        "Configure JWT bearer from options for authority, audience and issuer, ready to point at Entra without a code change.",
+        "Authorisation policies requiring the Coupon.Redeem role on reservation endpoints and Coupon.Admin on admin endpoints.",
+        "Add a test-token scheme signed with a symmetric development key, registered only when the environment is Development or Test.",
+        "Add a startup guard that throws if the test scheme is enabled while the environment is anything else. Configuration alone must not be able to turn it on in production.",
+        "The guard needs its own test: build a host with the test scheme configured and the environment set to Production, and assert startup throws.",
+        "Test 401 with no token, 403 for a customer token on a reservation endpoint, and 200 for a token carrying the right role."
+      ],
+      "verify": ["dotnet test tests/CouponService.ApiTests --filter FullyQualifiedName~Auth"]
+    },
+    {
+      "id": "CS-19",
+      "title": "Structured logging, correlation and domain events",
+      "wave": 4,
+      "size": "M",
+      "labels": ["wave-4", "area:api"],
+      "depends": ["CS-15"],
+      "goal": "Make one customer complaint resolve to one trace, and keep sensitive values out of logs.",
+      "scope": ["src/CouponService.Api/Observability/", "src/CouponService.Infrastructure/Logging/", "tests/CouponService.ApiTests/Observability/"],
+      "outOfScope": ["Application Insights wiring and alert rules, which need Azure."],
+      "acceptance": ["AC-8.1", "AC-8.2", "AC-8.3", "AC-8.4"],
+      "packages": ["Serilog.AspNetCore", "Serilog.Formatting.Compact"],
+      "steps": [
+        "Serilog with compact JSON output, enriched with CorrelationId, UserId, CouponCode, OrderId, PolicyContentHash, Outcome and DurationMs.",
+        "Correlation middleware accepting an inbound W3C traceparent or generating one, echoing it on the response, and propagating it on outgoing calls.",
+        "Emit the named domain events from the architecture document: CouponPreviewed, CouponApplied, CouponRejected, ReservationCreated, RedemptionConfirmed, ReservationReleased, ReservationExpired, UsageLimitReached, CouponServiceUnavailable.",
+        "Add a redaction policy and a test that asserts no log line ever contains a bearer token, a connection string or a customer email, driven by a request that carries all three.",
+        "Test that a correlation id supplied by the caller survives to the log output unchanged."
+      ],
+      "verify": ["dotnet test tests/CouponService.ApiTests --filter FullyQualifiedName~Observability"]
+    },
+    {
+      "id": "CS-20",
+      "title": "Order API stand-in with authoritative re-pricing",
+      "wave": 4,
+      "size": "M",
+      "labels": ["wave-4", "area:api", "area:security"],
+      "depends": ["CS-18"],
+      "goal": "Play the role the client's platform would play, and prove that a manipulated client cannot influence the price.",
+      "scope": ["src/OrderApi/", "tests/CouponService.ApiTests/Ordering/"],
+      "outOfScope": ["Managed identity token acquisition, which needs Azure. Abstract it behind a token provider with a local implementation."],
+      "acceptance": ["AC-5.1", "AC-5.2", "AC-5.3", "AC-5.4"],
+      "steps": [
+        "GET /v1/pizzas from the committed data/pizzas.json snapshot, with an ETag.",
+        "POST /v1/orders: discard any total the client sent, call reserve on the Coupon Service, persist at the returned total, then confirm.",
+        "If the coupon fails at checkout, default to AllowWithoutDiscount, placing the order at full price with the reason attached; honour couponPolicy RequireDiscount by returning 409.",
+        "If the Coupon Service is unreachable, place the order at full price, log CouponServiceUnavailable and surface the degradation. Fail closed on the discount, open on the order.",
+        "Release the reservation if persistence fails after reserving.",
+        "The headline test: submit an order claiming a total of 1.00 for a basket truly worth 31.00 with a 10 percent coupon, and assert the stored order total is 27.90."
+      ],
+      "verify": ["dotnet test tests/CouponService.ApiTests --filter FullyQualifiedName~Ordering"]
+    },
+    {
+      "id": "CS-21",
+      "title": "API contract test suite",
+      "wave": 4,
+      "size": "S",
+      "labels": ["wave-4", "area:test"],
+      "depends": ["CS-19", "CS-20"],
+      "goal": "Pin the HTTP contract in process, so a breaking change fails in CI rather than in the deployed BDD run.",
+      "scope": ["tests/CouponService.ApiTests/Contract/"],
+      "outOfScope": ["Anything requiring deployed infrastructure."],
+      "acceptance": ["AC-1.2", "AC-7.1", "AC-7.2"],
+      "packages": ["Microsoft.AspNetCore.Mvc.Testing"],
+      "steps": [
+        "Use WebApplicationFactory with in-memory repositories and the test token scheme.",
+        "Cover the full status matrix: 200 applied, 200 rejected with reason, 400 malformed, 401 missing token, 403 wrong role, 404 unknown reservation, 409 cap consumed, 412 stale ETag.",
+        "Assert the problem details shape and that every error response carries a correlation id.",
+        "Snapshot the OpenAPI document and fail on an unreviewed change, so the contract cannot drift silently."
+      ],
+      "verify": ["dotnet test tests/CouponService.ApiTests"]
+    },
+    {
+      "id": "CS-22",
+      "title": "Reqnroll BDD suite with a configurable target",
+      "wave": 5,
+      "size": "L",
+      "labels": ["wave-5", "area:test"],
+      "depends": ["CS-21"],
+      "goal": "Satisfy the brief's BDD requirement with scenarios that read as business behaviour, runnable locally now and against APIM later without editing a feature file.",
+      "scope": ["tests/CouponService.Bdd/"],
+      "outOfScope": ["Running against deployed Azure, which happens once a subscription exists."],
+      "acceptance": ["AC-10.1", "AC-10.4"],
+      "packages": ["Reqnroll.xUnit"],
+      "steps": [
+        "Take base URL and token strategy from configuration, so the same features run against localhost today and APIM later. This is the whole reason the suite is deliverable without Azure.",
+        "Implement the eleven scenarios in section 19 of docs/solution-architecture.md, including near-miss hints, a rule created at runtime with no redeployment, capped best-of, an automatic policy, an unknown fact rejected on write, concurrency, tampering and the 403 case.",
+        "Seed every scenario's own policies through the admin API under a per-run prefix such as RUN7F3A_, and delete them in teardown. Never depend on pre-existing shared codes, which is precisely why the reference proposal's suite contradicts itself on a second run.",
+        "Fail with a clear message if the target is unreachable, rather than reporting a misleading assertion failure."
+      ],
+      "verify": ["dotnet test tests/CouponService.Bdd"]
+    },
+    {
+      "id": "CS-23",
+      "title": "Cosmos DB adapter with transactional reservation",
+      "wave": 6,
+      "size": "L",
+      "labels": ["wave-6", "area:data"],
+      "depends": ["CS-13", "CS-14"],
+      "goal": "Implement the real data path: three containers, the pk convention, and a reservation that is correct under concurrency with no lock service.",
+      "scope": ["src/CouponService.Infrastructure/Cosmos/", "tests/CouponService.UnitTests/Cosmos/"],
+      "outOfScope": ["Emulator-backed tests, which are CS-24.", "Provisioning, which is CS-25."],
+      "acceptance": ["AC-4.5", "AC-4.6", "AC-8.5"],
+      "packages": ["Microsoft.Azure.Cosmos"],
+      "steps": [
+        "Containers per design.md: policies and redemptions partitioned by /pk, orders by /orderId. One database.",
+        "Register CosmosClient as a singleton with source-generated serialisation. Constructing it per request collapses throughput.",
+        "Reserve executes a single transactional batch within one partition: insert the redemption and update the counter with an ETag precondition. A 412 means someone else won.",
+        "Unique key on /orderId enforces idempotency in the database rather than in application code, so a retried network call cannot double-count.",
+        "Set TTL on reserved redemptions and clear it on confirm.",
+        "Log RequestCharge as a structured field on every operation, and pass CancellationToken through so an abandoned preview stops costing RU."
+      ],
+      "verify": ["dotnet build CouponService.slnx", "dotnet test tests/CouponService.UnitTests"]
+    },
+    {
+      "id": "CS-24",
+      "title": "Cosmos emulator integration tests",
+      "wave": 6,
+      "size": "M",
+      "labels": ["wave-6", "area:test", "area:data"],
+      "depends": ["CS-23"],
+      "goal": "Exercise the real data access path against a real Cosmos engine, covering the behaviours only the database can prove.",
+      "scope": ["tests/CouponService.IntegrationTests/", "docker-compose.yml"],
+      "outOfScope": ["Changing production code, unless the emulator reveals a genuine bug, which should be fixed and called out."],
+      "acceptance": ["AC-10.6", "AC-4.5"],
+      "steps": [
+        "Add docker-compose.yml running the Cosmos emulator, with documented startup time and the certificate step.",
+        "Skip the entire project with an explicit, readable message when the emulator is unreachable, so a developer without Docker still gets a green suite. Never let it fail silently or hang.",
+        "Test the transactional batch actually rolls back, that a duplicate orderId violates the unique key, that a genuine ETag conflict returns 412, and that TTL is set while Reserved and cleared on confirm.",
+        "Test true parallel reservations at a cap of one, from multiple concurrent tasks, and assert exactly one wins."
+      ],
+      "verify": ["dotnet test tests/CouponService.IntegrationTests"]
+    },
+    {
+      "id": "CS-25",
+      "title": "Bicep modules for the whole environment",
+      "wave": 7,
+      "size": "L",
+      "labels": ["wave-7", "area:infra", "blocked:azure"],
+      "depends": ["CS-01"],
+      "goal": "Author infrastructure that provisions everything from an empty resource group. Cannot be deployed until a subscription exists, so correctness is established by build and lint.",
+      "scope": ["infra/bicep/"],
+      "outOfScope": ["Actually deploying. Never report a deployment that did not happen."],
+      "acceptance": ["AC-9.1", "AC-9.2", "NFR-6"],
+      "steps": [
+        "Modules: observability, identity, keyvault, cosmos, containerapps, apim, apim-api, staticwebapp, and an appservice fallback.",
+        "main.bicep composing them, with main.demo.bicepparam carrying no secrets.",
+        "Pin the free and near-free SKUs from section 17: APIM Consumption, Container Apps consumption, Static Web Apps Free, Cosmos serverless with a free-tier switch, Log Analytics with a daily cap.",
+        "Container Apps are created with a public placeholder image, per decision P-11, so the first deploy into an empty resource group does not deadlock on a registry that has no image yet.",
+        "Tag every resource with project, env and owner so cost can be filtered and the environment deleted in one command.",
+        "Verify with bicep build and bicep lint. State plainly in the pull request that no deployment has been attempted."
+      ],
+      "verify": ["az bicep build --file infra/bicep/main.bicep --stdout"]
+    },
+    {
+      "id": "CS-26",
+      "title": "Azure Pipelines definition, seeding and template linting",
+      "wave": 7,
+      "size": "L",
+      "labels": ["wave-7", "area:infra", "blocked:azure"],
+      "depends": ["CS-22", "CS-25"],
+      "goal": "Define the eight-stage pipeline that deploys the whole solution from scratch with no manual steps, and prove the templates lint in CI without a subscription.",
+      "scope": ["azure-pipelines.yml", "scripts/seed-policies.ps1", ".github/workflows/"],
+      "outOfScope": ["Running the deployment stages, which needs a subscription and a service connection."],
+      "acceptance": ["AC-9.1", "AC-9.2", "AC-9.3", "AC-9.4", "AC-9.5", "AC-9.6"],
+      "steps": [
+        "Stages: build, test, package, provision, deploy, seed, BDD, verify, with the gates from section 18. Test failure must stop the pipeline before anything deploys.",
+        "Authenticate with a workload-identity federated service connection. No secret in the pipeline, ever.",
+        "Publish the Bicep what-if output as an artifact before applying changes.",
+        "Idempotent seeding through the admin API for the deterministic policy set, safe to re-run.",
+        "Add a GitHub Actions workflow running build, test and bicep lint on pull requests, so the repository has working CI even before Azure DevOps is wired up.",
+        "Document the three one-time manual prerequisites and confirm nothing else is manual."
+      ],
+      "verify": ["dotnet build CouponService.slnx", "dotnet test CouponService.slnx"]
+    }
+  ]
+}

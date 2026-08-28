@@ -1,0 +1,54 @@
+{
+  "source": {
+    "name": "Fun API Pizza Orders",
+    "url": "https://funapi.dev/api/pizza/v1/menu",
+    "docs": "https://funapi.dev/docs/pizza",
+    "retrievedAt": "2026-08-23",
+    "note": "One-time snapshot. Runtime does not call Fun API. Re-import by replacing this file if the mock menu changes."
+  },
+  "currency": "EUR",
+  "pizzas": [
+    {
+      "id": "margherita",
+      "sourceId": 1,
+      "name": "Margherita",
+      "unitPrice": 9.5,
+      "vegetarian": true
+    },
+    {
+      "id": "pepperoni",
+      "sourceId": 2,
+      "name": "Pepperoni",
+      "unitPrice": 11.0,
+      "vegetarian": false
+    },
+    {
+      "id": "quattro-formaggi",
+      "sourceId": 3,
+      "name": "Quattro Formaggi",
+      "unitPrice": 12.5,
+      "vegetarian": true
+    },
+    {
+      "id": "veggie-garden",
+      "sourceId": 4,
+      "name": "Veggie Garden",
+      "unitPrice": 10.5,
+      "vegetarian": true
+    },
+    {
+      "id": "bbq-chicken",
+      "sourceId": 5,
+      "name": "BBQ Chicken",
+      "unitPrice": 12.0,
+      "vegetarian": false
+    },
+    {
+      "id": "hawaiian",
+      "sourceId": 6,
+      "name": "Hawaiian",
+      "unitPrice": 11.0,
+      "vegetarian": false
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "total": 6,
+  "data": [
+    { "id": 1, "name": "Margherita", "price": 9.5, "vegetarian": true },
+    { "id": 2, "name": "Pepperoni", "price": 11, "vegetarian": false },
+    { "id": 3, "name": "Quattro Formaggi", "price": 12.5, "vegetarian": true },
+    { "id": 4, "name": "Veggie Garden", "price": 10.5, "vegetarian": true },
+    { "id": 5, "name": "BBQ Chicken", "price": 12, "vegetarian": false },
+    { "id": 6, "name": "Hawaiian", "price": 11, "vegetarian": false, "controversial": true }
+  ]
+}
