@@ -1,5 +1,6 @@
-using CouponService.Api.Authentication;
 using CouponService.Api.DependencyInjection;
+using CouponService.Api.Observability;
+using CouponService.Api.Authentication;
 using CouponService.Api.Middleware;
 using CouponService.Api.OpenApi;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -7,6 +8,9 @@ using Microsoft.AspNetCore.Mvc;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.AddCouponSerilog();
+builder.Services.AddCouponObservability();
 
 builder.Services.AddControllers(options =>
     {
@@ -74,7 +78,8 @@ builder.Services.AddOpenApi(options =>
 
 var app = builder.Build();
 
-app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseMiddleware<CorrelationMiddleware>();
+app.UseMiddleware<RequestLoggingMiddleware>();
 
 app.UseExceptionHandler();
 

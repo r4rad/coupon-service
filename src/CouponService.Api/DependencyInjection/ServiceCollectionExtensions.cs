@@ -10,6 +10,7 @@ using CouponService.Domain;
 using CouponService.Engine.Caching;
 using CouponService.Engine.Facts;
 using CouponService.Infrastructure.InMemory;
+using CouponService.Infrastructure.Logging;
 using Microsoft.Extensions.Options;
 
 namespace CouponService.Api.DependencyInjection;
@@ -43,6 +44,8 @@ internal static class ServiceCollectionExtensions
 
         services.AddHealthChecks()
             .AddCheck<PolicyRepositoryHealthCheck>("policies", tags: ["ready"]);
+
+        services.AddCouponObservabilityLogging();
 
         return services;
     }
