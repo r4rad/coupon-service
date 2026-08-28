@@ -1,0 +1,6 @@
+* text=auto
+
+# Hooks are executed by sh. With core.autocrlf=true a CRLF checkout makes sh fail on the
+# shebang, so pin them to LF regardless of platform or local git configuration.
+.githooks/** text eol=lf
+*.sh         text eol=lf

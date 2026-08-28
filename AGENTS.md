@@ -59,11 +59,23 @@ A ticket is not done because the code looks right. It is done when a test proves
 - Prove claims rather than asserting them. Where the design claims work is avoided, instrument it — for example, a counting fact provider that must be invoked zero times when a cheap predicate fails.
 - Cover the boundary: empty basket, single line, zero quantity, discount larger than the basket, cap of exactly zero, a policy that matches nothing.
 
+## Code and comments
+
+- Write no comment that restates what the code already says. `// increment the counter`, `// return the result`, or a prose summary of the three lines below it are noise, and they rot.
+- Comment only what the code cannot express: an invariant, a constraint imposed from outside, a non-obvious trade-off, or the reason an unusual choice is the correct one. A pointer to the `AC-` or `P-` item that forces a behaviour is often the most valuable comment in a file.
+- Never explain your change in a comment. `// changed to fix rounding`, `// added for CS-09` and `// this is now correct because…` address a reviewer, not the next reader, and become false the moment the pull request merges. That belongs in the commit message or the pull request body.
+- No commented-out code. No `TODO` without an issue number.
+- XML doc comments are welcome on public API surface where they say something the signature cannot.
+- Match the comment density and idiom of the file you are editing. Read the neighbouring code before adding to it.
+
 ## Git conventions
 
 - Branch: `ticket/CS-XX-short-slug`, created from the latest `main`.
 - Commit subject: `CS-XX: imperative summary`, for example `CS-04: parse condition grammar with node budget`.
-- Small, coherent commits. Do not squash unrelated work into one.
+- **Atomic and granular.** One logical change per commit. A pull request should read as an ordered sequence of small steps a reviewer can follow — typically the contract or type, then the behaviour, then the tests that pin it, then the `tasks.md` checkbox — not a single `CS-04: implement ticket` dump. If a subject needs the word "and", it is probably two commits.
+- Every commit must build. Prefer sequencing so the suite is green at each one; if you deliberately commit a failing test ahead of its implementation, say so in that commit's message.
+- Do not mix unrelated work into one commit, and do not squash the branch before opening the pull request. The granularity is the point.
+- **No trailers.** Never append `Co-Authored-By`, `Signed-off-by`, `Generated with`, or any other tool or agent attribution. A commit message ends with its own content. This is enforced by `.githooks/commit-msg`, which rejects the commit — do not work around it with `--no-verify`.
 - Never force-push a shared branch. Never commit directly to `main`.
 - Pull request title: `CS-XX: <ticket title>`. Body must list acceptance criteria satisfied and anything deliberately deferred.
 
@@ -76,6 +88,8 @@ Write what you tried, what blocked you, and the options you see — into the pul
 ## Environment notes
 
 - Windows, PowerShell **5.1**. `&&` chaining does not work; use `;` between commands. `??` and `Join-String` are unavailable.
+- **Hooks need wiring once per clone:** `git config core.hooksPath .githooks`. Without it, `commit-msg` never runs and the no-trailer rule is unenforced. `.gitattributes` pins `.githooks/**` to LF, because `core.autocrlf=true` would otherwise give the hook CRLF endings and `sh` fails on the shebang.
+- The agent tool itself may append an attribution trailer, independently of the message you write. If your commit is rejected by `commit-msg` for a trailer you did not author, that is the cause — turn attribution off rather than bypassing the hook. Cursor IDE: Settings, Agent, Attribution (UI only). Cursor CLI: `attribution.attributeCommitsToAgent: false` in `~/.cursor/cli-config.json`.
 - Save any `.ps1` file as **UTF-8 with BOM**. Without the BOM, PowerShell 5.1 decodes the file as Windows-1252, and a character such as an em dash becomes three bytes ending in `0x94` — a closing curly quote, which silently terminates a double-quoted string and produces baffling parse errors far from the real line. Either add the BOM or keep the file ASCII-only.
 - Ticket specifications live in `.github/tickets/*.md` and are **generated** from `.github/tickets.json`. Edit the JSON and run `./scripts/generate-ticket-docs.ps1`; never hand-edit a generated ticket file.
 - Solution file is `CouponService.slnx`, the .NET 10 XML format, not `.sln`.

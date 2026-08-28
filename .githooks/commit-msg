@@ -1,0 +1,45 @@
+#!/bin/sh
+#
+# Rejects tool and agent attribution trailers. See AGENTS.md, "Git conventions":
+# a commit message ends with its own content.
+#
+# Wire this up once per clone:
+#     git config core.hooksPath .githooks
+#
+# The check is deliberately narrow. It matches trailer-form lines and the two common
+# bare footer forms, and nothing else, because a false rejection in a commit hook is
+# more expensive than an occasional miss.
+
+msg_file="$1"
+[ -f "$msg_file" ] || exit 0
+
+# A guard that cannot run must not pass silently.
+command -v grep >/dev/null 2>&1 || {
+    echo "commit-msg: grep is not available, so the message cannot be checked." >&2
+    echo "  Refusing the commit rather than letting an unchecked message through." >&2
+    exit 1
+}
+
+# Drop the comment block git appends, so a trailer quoted in a comment cannot trip this.
+body=$(grep -v '^#' "$msg_file")
+
+trailer_keys='Co-authored-by|Co-authored-with|Signed-off-by|Assisted-by|Generated-by|Generated-with|Created-by|Written-by'
+banned="(^[[:space:]]*(${trailer_keys})[[:space:]]*:)|(^[[:space:]]*(Generated|Created) (with|by)[[:space:]])"
+
+offending=$(printf '%s\n' "$body" | grep -Ein "$banned")
+
+if [ -n "$offending" ]; then
+    echo "commit-msg: rejected." >&2
+    echo "" >&2
+    echo "  This message carries a tool or agent attribution trailer:" >&2
+    echo "" >&2
+    printf '%s\n' "$offending" | sed 's/^/      /' >&2
+    echo "" >&2
+    echo "  AGENTS.md, Git conventions: never append Co-Authored-By, Signed-off-by," >&2
+    echo "  Generated with, or any other tool attribution. Remove the line and commit again." >&2
+    echo "" >&2
+    echo "  Do not bypass this with --no-verify." >&2
+    exit 1
+fi
+
+exit 0

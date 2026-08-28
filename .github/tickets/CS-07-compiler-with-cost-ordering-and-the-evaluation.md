@@ -109,8 +109,11 @@ Then:
      Each acceptance criterion needs a test that fails without your change. Prove that by
      reverting the change mentally, or temporarily, and confirming the test goes red.
   5. Tick the matching checkboxes in .kiro/specs/coupon-service/tasks.md.
-  6. Commit as "CS-07: <imperative summary>", push the branch, and open a pull request titled
-     "CS-07: Compiler with cost ordering, and the evaluation scope".
+  6. Commit in atomic, granular steps as you go - one logical change each, every commit
+     building - with subjects of the form "CS-07: <imperative summary>". Do not squash the
+     branch into a single commit; the granularity is what makes the pull request reviewable.
+     Add no trailer of any kind: no Co-Authored-By, no Signed-off-by, no tool attribution.
+  7. Push the branch and open a pull request titled "CS-07: Compiler with cost ordering, and the evaluation scope".
      In the body, list every acceptance criterion satisfied, anything deliberately deferred,
      and any out-of-scope change you had to make.
 
@@ -118,6 +121,9 @@ Rules of engagement:
   - Do not suppress an analyzer, add NoWarn, or weaken a test to get a green build. Fix the code.
   - Do not stub an acceptance criterion and mark it done.
   - Never report a result you did not observe.
+  - Comment only what the code cannot express: an invariant, an external constraint, a
+    non-obvious trade-off, or the AC or P item that forces a behaviour. Do not narrate the
+    code, and never explain your change in a comment - that belongs in the commit message.
   - If you become blocked, stop and report what you tried, what blocked you, and the options you
     see. A ticket returned with a clear blocker is a good outcome; one returned green with a
     hollowed-out test is not.
@@ -134,7 +140,8 @@ tests, the verification output, and anything you deferred or could not do.
 3. No previously passing test now fails.
 4. Every acceptance criterion above is covered by a test that would fail without this change.
 5. The matching checkboxes in `tasks.md` are ticked.
-6. A pull request exists listing the acceptance criteria satisfied and anything deferred.
+6. The branch is a sequence of atomic commits, none of them carrying a trailer.
+7. A pull request exists listing the acceptance criteria satisfied and anything deferred.
 
 ---
 
