@@ -1,2 +1,17 @@
 <Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CouponService.Api/CouponService.Api.csproj" />
+    <Project Path="src/CouponService.Application/CouponService.Application.csproj" />
+    <Project Path="src/CouponService.Domain/CouponService.Domain.csproj" />
+    <Project Path="src/CouponService.Engine/CouponService.Engine.csproj" />
+    <Project Path="src/CouponService.Infrastructure/CouponService.Infrastructure.csproj" />
+    <Project Path="src/OrderApi/OrderApi.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CouponService.ApiTests/CouponService.ApiTests.csproj" />
+    <Project Path="tests/CouponService.Bdd/CouponService.Bdd.csproj" />
+    <Project Path="tests/CouponService.EngineTests/CouponService.EngineTests.csproj" />
+    <Project Path="tests/CouponService.IntegrationTests/CouponService.IntegrationTests.csproj" />
+    <Project Path="tests/CouponService.UnitTests/CouponService.UnitTests.csproj" />
+  </Folder>
 </Solution>

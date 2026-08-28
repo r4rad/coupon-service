@@ -11,9 +11,9 @@ Hour figures are focused-work estimates. `[D3]` means inside the committed 2–3
 ## Wave 0 — Foundations (no dependencies) · 1 h `[D3]`
 
 - [ ] 0.1 `git init`, `.gitignore`, `.editorconfig`, initial commit of the existing docs (0.25 h)
-- [ ] 0.2 `Directory.Build.props`: .NET 10, nullable enabled, analyzers on, warnings as errors _(NFR-7)_ (0.25 h)
-- [ ] 0.3 Solution plus all project skeletons and reference edges per design.md (0.25 h)
-- [ ] 0.4 Architecture test asserting `CouponService.Engine` references nothing outside `Domain` _(AC-10.5)_ (0.25 h)
+- [x] 0.2 `Directory.Build.props`: .NET 10, nullable enabled, analyzers on, warnings as errors _(NFR-7)_ (0.25 h)
+- [x] 0.3 Solution plus all project skeletons and reference edges per design.md (0.25 h)
+- [x] 0.4 Architecture test asserting `CouponService.Engine` references nothing outside `Domain` _(AC-10.5)_ (0.25 h)
 - [ ] 0.5 Create the Azure DevOps project as **public** and push, so parallel jobs are available without the grant wait (0.25 h, blocking — do first)
 
 ## Wave 1 — Engine core (depends: Wave 0) · 9 h `[D3]`
