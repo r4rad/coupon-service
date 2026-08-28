@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\CouponService.Application\CouponService.Application.csproj" />
     <ProjectReference Include="..\..\src\CouponService.Engine\CouponService.Engine.csproj" />
   </ItemGroup>
 

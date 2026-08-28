@@ -237,7 +237,7 @@ public static class PolicyParser
         return new ArithmeticExpr(op, operands);
     }
 
-    private static Selector ParseSelector(JsonElement element, ParseBudget budget, string path)
+    public static Selector ParseSelector(JsonElement element, ParseBudget budget, string path)
     {
         var property = RequireSingleProperty(element, path);
         if (property.Name is not "lines")

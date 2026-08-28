@@ -7,8 +7,6 @@ Greenfield service: **there is no existing pizza ordering API to extend.** We bu
 | Document | Purpose |
 |---|---|
 | [docs/solution-architecture.md](docs/solution-architecture.md) | **The proposal.** Single diagram-led design document: the declarative policy engine (grammar, parsing, compilation, effects, governance), redemption lifecycle, data model, auth, scalability, performance, infrastructure, pipeline, tests, ADRs, risks. |
-| [docs/gap-analysis.md](docs/gap-analysis.md) | Comparison against the recruiter's sample proposal: differences, gaps both ways, and what we adopt, adapt or reject. |
-| [docs/architecture.md](docs/architecture.md) | Earlier one-page summary, superseded by the main proposal. |
 | [data/README.md](data/README.md) | Catalog seed (mock menu snapshot, loaded from git). |
 
 **IaC:** **Bicep** is what we implement and deploy. Terraform is documented as an equivalent route (author experience) and is out of scope for the pipeline.
