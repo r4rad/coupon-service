@@ -6,12 +6,16 @@ public interface IPolicyRepository
 
     Task<PolicyRecord?> GetByPartitionKeyAsync(string partitionKey, CancellationToken cancellationToken = default);
 
+    Task<PolicyRecord?> GetByPolicyIdAsync(string policyId, CancellationToken cancellationToken = default);
+
     Task<PolicyRecord> CreateAsync(PolicyRecord policy, CancellationToken cancellationToken = default);
 
     Task<PolicyRecord> ReplaceAsync(
         PolicyRecord policy,
         string ifMatchEtag,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<PolicyRecord>> ListAsync(CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<PolicyRecord>> ListAutomaticAsync(
         CancellationToken cancellationToken = default);

@@ -27,6 +27,23 @@ public sealed class InMemoryPolicyRepository : IPolicyRepository
         }
     }
 
+    public Task<PolicyRecord?> GetByPolicyIdAsync(
+        string policyId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(policyId);
+
+        lock (_gate)
+        {
+            var match = _policies.Values
+                .Select(stored => stored.ToRecord())
+                .FirstOrDefault(policy =>
+                    string.Equals(policy.PolicyId, policyId, StringComparison.Ordinal));
+
+            return Task.FromResult(match);
+        }
+    }
+
     public Task<PolicyRecord> CreateAsync(PolicyRecord policy, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(policy);
@@ -71,6 +88,19 @@ public sealed class InMemoryPolicyRepository : IPolicyRepository
             _policies[policy.PartitionKey] = stored;
             WriteCount++;
             return Task.FromResult(stored.ToRecord());
+        }
+    }
+
+    public Task<IReadOnlyList<PolicyRecord>> ListAsync(CancellationToken cancellationToken = default)
+    {
+        lock (_gate)
+        {
+            var all = _policies.Values
+                .Select(stored => stored.ToRecord())
+                .OrderBy(policy => policy.PolicyId, StringComparer.Ordinal)
+                .ToList();
+
+            return Task.FromResult<IReadOnlyList<PolicyRecord>>(all);
         }
     }
 
