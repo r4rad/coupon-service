@@ -13,4 +13,11 @@ When you add controllers or minimal API routes, run:
 dotnet build CouponService.slnx
 ```
 
-The build also regenerates `insomnia/coupon-service.insomnia.json` via `scripts/sync-insomnia-from-openapi.ps1`.
+While the API is running (Development / Testing), the live document and UIs are:
+
+| Service | OpenAPI | Scalar | ReDoc |
+|---|---|---|---|
+| Coupon Service | `/openapi/v1.json` | `/scalar` | `/redoc` |
+| Order API | `/openapi/v1.json` | `/scalar` | `/redoc` |
+
+See [../README.md](../README.md) for details.

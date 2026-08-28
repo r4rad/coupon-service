@@ -1,6 +1,10 @@
-# Insomnia workspace is auto-generated. See docs/api/README.md
-# Swagger/Redoc-style preview: docs/api/insomnia-swagger-redoc-guide.md
-#
-# Design preview:  insomnia/coupon-service-design.insomnia.json  (import as Design Document)
-# Try it out:      insomnia/coupon-service.insomnia.json         (import as Collection)
-# Regenerate:      dotnet build CouponService.slnx
+# Insomnia (retired)
+
+API documentation and try-it-out moved to **Scalar** and **ReDoc** hosted by each API:
+
+- Coupon Service: http://localhost:5174/scalar · http://localhost:5174/redoc
+- Order API: http://localhost:5043/scalar · http://localhost:5043/redoc
+
+See `docs/api/README.md`.
+
+Files in this folder and `tools/OpenApiInsomniaSync/` are legacy and are no longer regenerated on build.
