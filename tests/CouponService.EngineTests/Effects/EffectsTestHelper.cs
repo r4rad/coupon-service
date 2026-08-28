@@ -47,6 +47,6 @@ internal static class EffectsTestHelper
             new CartLine("line-2", "funghi", "Vegetarian", remainder, 1)));
     }
 
-    internal static Cart CreateSingleLineCart(decimal lineTotal) =>
-        new(ImmutableArray.Create(new CartLine("line-1", "margherita", "Vegetarian", lineTotal, 1)));
+    internal static Cart CreateSingleLineCart(decimal lineTotal, string category = "Vegetarian") =>
+        new(ImmutableArray.Create(new CartLine("line-1", "margherita", category, lineTotal, 1)));
 }
