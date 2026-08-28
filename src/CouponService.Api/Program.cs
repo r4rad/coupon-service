@@ -1,3 +1,4 @@
+using CouponService.Api.Authentication;
 using CouponService.Api.DependencyInjection;
 using CouponService.Api.Middleware;
 using CouponService.Api.OpenApi;
@@ -7,7 +8,10 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers()
+builder.Services.AddControllers(options =>
+    {
+        options.Conventions.Add(new CouponAuthorizationConvention());
+    })
     .ConfigureApiBehaviorOptions(options =>
     {
         options.InvalidModelStateResponseFactory = context =>
@@ -53,6 +57,8 @@ if (!builder.Environment.IsEnvironment("Testing"))
     builder.Services.AddCouponService(builder.Configuration);
 }
 
+builder.Services.AddCouponAuthentication(builder.Configuration, builder.Environment);
+
 builder.Services.AddOpenApi(options =>
 {
     options.AddDocumentTransformer((document, _, _) =>
@@ -80,6 +86,9 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 }
 
 app.UseHttpsRedirection();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

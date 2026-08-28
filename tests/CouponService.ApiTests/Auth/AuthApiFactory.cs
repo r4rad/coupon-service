@@ -1,7 +1,6 @@
 using CouponService.Api.Authentication;
 using CouponService.Api.Health;
 using CouponService.Api.Options;
-using CouponService.ApiTests.Auth;
 using CouponService.Application.Engine;
 using CouponService.Application.Policies;
 using CouponService.Application.Preview;
@@ -15,12 +14,11 @@ using CouponService.Infrastructure.InMemory;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 
-namespace CouponService.ApiTests.Reservations;
+namespace CouponService.ApiTests.Auth;
 
-public sealed class ReservationApiFactory : WebApplicationFactory<Program>
+public sealed class AuthApiFactory : WebApplicationFactory<Program>
 {
     internal InMemoryPolicyRepository Policies { get; } = new();
 
@@ -60,17 +58,5 @@ public sealed class ReservationApiFactory : WebApplicationFactory<Program>
             services.AddHealthChecks()
                 .AddCheck<PolicyRepositoryHealthCheck>("policies", tags: ["ready"]);
         });
-    }
-
-    public new HttpClient CreateClient() =>
-        CreateClient(new WebApplicationFactoryClientOptions());
-
-    public new HttpClient CreateClient(WebApplicationFactoryClientOptions options)
-    {
-        var client = base.CreateClient(options);
-        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
-            "Bearer",
-            TestTokenFactory.CreateToken(AuthorizationPolicies.Redeem));
-        return client;
     }
 }
