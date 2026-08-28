@@ -1,4 +1,4 @@
-namespace CouponService.Infrastructure.InMemory;
+namespace CouponService.Application.Redemption;
 
 public sealed class PreconditionFailedException : Exception
 {

@@ -1,4 +1,5 @@
 using CouponService.Application.Policies;
+using CouponService.Application.Redemption;
 using CouponService.Infrastructure.InMemory;
 
 namespace CouponService.UnitTests.Application;

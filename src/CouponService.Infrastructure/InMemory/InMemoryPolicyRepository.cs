@@ -1,4 +1,5 @@
 using CouponService.Application.Policies;
+using CouponService.Application.Redemption;
 
 namespace CouponService.Infrastructure.InMemory;
 
