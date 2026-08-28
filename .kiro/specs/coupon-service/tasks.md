@@ -45,7 +45,7 @@ Hour figures are focused-work estimates. `[D3]` means inside the committed 2–3
 - [x] 3.1 `ICouponValidator`, `IPriceCalculator`, `ICouponRedeemer`, `PolicyDecision`, repository ports (0.75 h)
 - [x] 3.2 In-memory repositories with ETag semantics faithful enough to test CAS _(P-9)_ (1 h)
 - [x] 3.3 Redemption lifecycle: reserve, confirm, release, TTL stamping, idempotency on `orderId` _(AC-4.1…AC-4.7)_ (1.75 h)
-- [ ] 3.4 `IAutomaticPolicyIndex` with 60-second cache and priority-based resolution _(AC-6.7, P-4)_ (0.75 h)
+- [x] 3.4 `IAutomaticPolicyIndex` with 60-second cache and priority-based resolution _(AC-6.7, P-4)_ (0.75 h)
 - [x] 3.5 Unit tests including a simulated concurrent reservation race _(AC-4.5)_ (0.75 h)
 
 ## Wave 4 — API, auth and logging (depends: Wave 3) · 7 h `[D3]`
