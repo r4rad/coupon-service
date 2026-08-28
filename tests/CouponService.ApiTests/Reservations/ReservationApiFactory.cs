@@ -1,5 +1,7 @@
+using CouponService.Api.Authentication;
 using CouponService.Api.Health;
 using CouponService.Api.Options;
+using CouponService.ApiTests.Auth;
 using CouponService.Application.Engine;
 using CouponService.Application.Policies;
 using CouponService.Application.Preview;
@@ -30,6 +32,11 @@ public sealed class ReservationApiFactory : WebApplicationFactory<Program>
     {
         builder.UseEnvironment("Testing");
 
+        foreach (var (key, value) in TestTokenFactory.TestAuthenticationConfiguration)
+        {
+            builder.UseSetting(key!, value);
+        }
+
         builder.ConfigureServices(services =>
         {
             services.AddSingleton<IOptions<CouponServiceOptions>>(
@@ -53,5 +60,17 @@ public sealed class ReservationApiFactory : WebApplicationFactory<Program>
             services.AddHealthChecks()
                 .AddCheck<PolicyRepositoryHealthCheck>("policies", tags: ["ready"]);
         });
+    }
+
+    public new HttpClient CreateClient() =>
+        CreateClient(new WebApplicationFactoryClientOptions());
+
+    public new HttpClient CreateClient(WebApplicationFactoryClientOptions options)
+    {
+        var client = base.CreateClient(options);
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
+            "Bearer",
+            TestTokenFactory.CreateToken(AuthorizationPolicies.Redeem));
+        return client;
     }
 }
