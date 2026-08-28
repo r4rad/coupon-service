@@ -19,8 +19,8 @@ Hour figures are focused-work estimates. `[D3]` means inside the committed 2–3
 ## Wave 1 — Engine core (depends: Wave 0) · 9 h `[D3]`
 
 - [x] 1.1 Domain primitives: `Cart`, `CartLine`, `Money` rounding helpers, `PriceBreakdown`, `DiscountPlan`, `LineAllocation` _(AC-1.5, NFR-3)_ (0.75 h)
-- [ ] 1.2 `Value` and `ValueKind` _(design.md signatures)_ (0.5 h)
-- [ ] 1.3 `Expr` record hierarchy, operator enums, `Selector` (0.75 h)
+- [x] 1.2 `Value` and `ValueKind` _(design.md signatures)_ (0.5 h)
+- [x] 1.3 `Expr` record hierarchy, operator enums, `Selector` (0.75 h)
 - [ ] 1.4 Parser with `ParseBudget` and `PolicySyntaxException`; single-key operator dispatch _(AC-2.1, AC-2.5)_ (1.5 h)
 - [ ] 1.5 Fact registry, `FactDescriptor`, `FactCost`, and the documented fact vocabulary (1 h)
 - [ ] 1.6 Manifest generated from the registry _(AC-6.2)_ (0.5 h)
