@@ -1,6 +1,6 @@
 # Coupon Service — solution architecture
 
-Coupon support for the pizza ordering platform. Comparison against the recruiter's sample proposal: [gap-analysis.md](gap-analysis.md).
+Coupon support for the pizza ordering platform.
 
 | | |
 |---|---|
@@ -1127,7 +1127,7 @@ src/  Api · Application · Domain · Engine · Infrastructure · OrderApi · we
 tests/ UnitTests · EngineTests · Benchmarks · ApiTests · Bdd
 infra/ bicep (delivery) · terraform (documented alternative, not wired to CI)
 data/  pizzas.json · policies.seed.json
-docs/  this file · gap-analysis.md · deployment · auth
+docs/  this file · deployment · auth
 azure-pipelines.yml
 ```
 
