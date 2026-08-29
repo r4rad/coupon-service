@@ -228,7 +228,10 @@
             "$ref": "#/components/schemas/CartRequest"
           },
           "code": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "confirmedOrderCount": {
             "format": "int32",
@@ -245,7 +248,6 @@
           }
         },
         "required": [
-          "code",
           "customerId",
           "cart"
         ],
@@ -905,7 +907,7 @@
     },
     "/v1/coupons/preview": {
       "post": {
-        "description": "Advisory evaluation against a basket. Returns 200 for applied and rejected outcomes with a full price breakdown. Never reserves or writes.",
+        "description": "Advisory evaluation against a basket. Omit code to evaluate automatic policies. Returns 200 for applied and rejected outcomes with a full price breakdown. Never reserves or writes.",
         "requestBody": {
           "content": {
             "application/*\u002Bjson": {

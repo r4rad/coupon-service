@@ -4,8 +4,10 @@ namespace CouponService.Api.Contracts.Preview;
 
 public sealed class PreviewRequest
 {
-    [Required]
-    public string Code { get; init; } = string.Empty;
+    /// <summary>
+    /// Coupon code to evaluate. Omit or leave empty to evaluate active automatic policies (AC-6.7).
+    /// </summary>
+    public string? Code { get; init; }
 
     [Required]
     public string CustomerId { get; init; } = string.Empty;

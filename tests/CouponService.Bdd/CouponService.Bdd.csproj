@@ -9,13 +9,33 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Reqnroll.xUnit" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\CouponService.Api\CouponService.Api.csproj" />
+    <ProjectReference Include="..\..\src\CouponService.Infrastructure\CouponService.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\OrderApi\OrderApi.csproj">
+      <Aliases>OrderApiHost</Aliases>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="appsettings.*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <DependentUpon>appsettings.json</DependentUpon>
+    </None>
   </ItemGroup>
 
 </Project>
