@@ -37,6 +37,15 @@ param apimPublisherEmail string = 'noreply@example.com'
 @description('APIM publisher display name.')
 param apimPublisherName string = 'Coupon Demo'
 
+@description('Entra tenant id for JWT validation. Replace after app registration; not a secret.')
+param entraTenantId string = '00000000-0000-0000-0000-000000000000'
+
+@description('Coupon Service API Application ID URI (JWT audience and MI token resource).')
+param couponApiAudience string = 'api://coupon-service'
+
+@description('Allowed SPA origin for APIM CORS on the customer product.')
+param spaOrigin string = 'https://localhost:5173'
+
 // Derived from the deployment resource group so the template never bakes in an RG name (AC-9.1).
 // Trailing salt avoids global name collisions with soft-deleted APIM from earlier failed applies.
 var uniqueSuffix = '${uniqueString(resourceGroup().id)}cs27'
@@ -100,6 +109,9 @@ module acr 'modules/acr.bicep' = {
   }
 }
 
+var jwtAuthority = 'https://login.microsoftonline.com/${entraTenantId}/v2.0'
+var couponServiceScope = '${couponApiAudience}/.default'
+
 module containerapps 'modules/containerapps.bicep' = if (hostingMode == 'containerApps') {
   name: 'containerapps'
   params: {
@@ -112,6 +124,9 @@ module containerapps 'modules/containerapps.bicep' = if (hostingMode == 'contain
     orderIdentityId: identity.outputs.orderIdentityId
     orderIdentityClientId: identity.outputs.orderIdentityClientId
     placeholderImage: placeholderImage
+    jwtAuthority: jwtAuthority
+    couponApiAudience: couponApiAudience
+    couponServiceScope: couponServiceScope
     tags: tags
   }
 }
@@ -127,6 +142,9 @@ module appservice 'modules/appservice.bicep' = if (hostingMode == 'appService') 
     couponIdentityClientId: identity.outputs.couponIdentityClientId
     orderIdentityId: identity.outputs.orderIdentityId
     orderIdentityClientId: identity.outputs.orderIdentityClientId
+    jwtAuthority: jwtAuthority
+    couponApiAudience: couponApiAudience
+    couponServiceScope: couponServiceScope
     tags: tags
   }
 }
@@ -157,6 +175,9 @@ module apimApi 'modules/apim-api.bicep' = {
     apimName: apim.outputs.apimName
     couponBackendUrl: couponBackendUrl
     orderBackendUrl: orderBackendUrl
+    entraTenantId: entraTenantId
+    couponApiAudience: couponApiAudience
+    spaOrigin: spaOrigin
   }
 }
 
@@ -178,3 +199,7 @@ output staticWebAppHostname string = staticwebapp.outputs.staticWebAppDefaultHos
 output couponBackendUrl string = couponBackendUrl
 output orderBackendUrl string = orderBackendUrl
 output appInsightsConnectionString string = observability.outputs.appInsightsConnectionString
+output orderIdentityClientId string = identity.outputs.orderIdentityClientId
+output couponIdentityClientId string = identity.outputs.couponIdentityClientId
+output couponApiAudience string = couponApiAudience
+output entraTenantId string = entraTenantId
