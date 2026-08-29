@@ -52,7 +52,7 @@ Until the role assignment exists, the Coupon Service returns **403** on reservat
 
 | Setting | Where | Example / placeholder |
 |---|---|---|
-| `entraTenantId` | `infra/bicep/main.demo.bicepparam` | `00000000-0000-0000-0000-000000000000` until registered |
+| `entraTenantId` | Bicep (defaults to `tenant().tenantId`) | Deployment tenant; override only for a different IdP |
 | `couponApiAudience` | Bicep param + `Authentication:Jwt:Audience` | `api://coupon-service` |
 | Customer SPA client ID | this doc / pipeline vars | `{customer-spa-client-id}` |
 | Admin client ID | this doc / pipeline vars | `{admin-client-id}` |

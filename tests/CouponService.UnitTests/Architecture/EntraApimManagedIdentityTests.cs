@@ -17,8 +17,9 @@ public sealed class EntraApimManagedIdentityTests
         var customer = Read(Path.Combine("infra", "bicep", "policies", "customer-product.xml"));
         Assert.Contains("validate-jwt", customer, StringComparison.Ordinal);
         Assert.Contains("openid-config", customer, StringComparison.Ordinal);
+        Assert.Contains("{{openid-config-url}}", customer, StringComparison.Ordinal);
+        Assert.Contains("{{jwt-issuer}}", customer, StringComparison.Ordinal);
         Assert.Contains("{{jwt-audience}}", customer, StringComparison.Ordinal);
-        Assert.Contains("{{entra-tenant-id}}", customer, StringComparison.Ordinal);
 
         var admin = Read(Path.Combine("infra", "bicep", "policies", "admin-product.xml"));
         Assert.Contains("validate-jwt", admin, StringComparison.Ordinal);

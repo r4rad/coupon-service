@@ -26,7 +26,7 @@ public sealed class LiveProvisionTests
         var main = Read(Path.Combine("infra", "bicep", "main.bicep"));
         Assert.Contains("param location string = 'westeurope'", main, StringComparison.Ordinal);
         Assert.Contains("param staticWebAppLocation string", main, StringComparison.Ordinal);
-        Assert.Contains("${uniqueString(resourceGroup().id)}cs27", main, StringComparison.Ordinal);
+        Assert.Contains("${uniqueString(resourceGroup().id)}cs28", main, StringComparison.Ordinal);
     }
 
     [Fact]

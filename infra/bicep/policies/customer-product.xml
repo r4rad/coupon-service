@@ -1,6 +1,6 @@
 <!--
   Customer product policy (AC-9.7, AC-7.6).
-  Named values jwt-audience, entra-tenant-id, spa-origin are provisioned in apim-api.bicep.
+  Named values openid-config-url, jwt-issuer, jwt-audience, spa-origin are provisioned in apim-api.bicep.
   Health probes stay anonymous; all other customer routes require a bearer JWT.
 -->
 <policies>
@@ -27,12 +27,12 @@
       </when>
       <otherwise>
         <validate-jwt header-name="Authorization" failed-validation-httpcode="401" failed-validation-error-message="Unauthorized" require-expiration-time="true" require-scheme="Bearer" output-token-variable-name="jwt">
-          <openid-config url="https://login.microsoftonline.com/{{entra-tenant-id}}/v2.0/.well-known/openid-configuration" />
+          <openid-config url="{{openid-config-url}}" />
           <audiences>
             <audience>{{jwt-audience}}</audience>
           </audiences>
           <issuers>
-            <issuer>https://login.microsoftonline.com/{{entra-tenant-id}}/v2.0</issuer>
+            <issuer>{{jwt-issuer}}</issuer>
           </issuers>
         </validate-jwt>
       </otherwise>
