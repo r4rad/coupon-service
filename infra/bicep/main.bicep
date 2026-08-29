@@ -38,7 +38,8 @@ param apimPublisherEmail string = 'noreply@example.com'
 param apimPublisherName string = 'Coupon Demo'
 
 // Derived from the deployment resource group so the template never bakes in an RG name (AC-9.1).
-var uniqueSuffix = uniqueString(resourceGroup().id)
+// Trailing salt avoids global name collisions with soft-deleted APIM from earlier failed applies.
+var uniqueSuffix = '${uniqueString(resourceGroup().id)}cs27'
 
 var tags = {
   project: projectName

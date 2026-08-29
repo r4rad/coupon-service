@@ -1,10 +1,7 @@
 using './main.bicep'
 
-// Demo parameters hold only non-sensitive configuration. The resource group is supplied by the
-// deployment command (az deployment group … --resource-group …), never by this file.
-
-param location = 'westeurope'
-param staticWebAppLocation = 'westeurope'
+param location = 'eastus2'
+param staticWebAppLocation = 'eastus2'
 param environmentName = 'demo'
 param projectName = 'coupon-service'
 param ownerTag = 'coupon-demo'
