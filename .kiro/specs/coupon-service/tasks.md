@@ -74,8 +74,8 @@ Hour figures are focused-work estimates. `[D3]` means inside the committed 2–3
 
 ## Wave 7 — Infrastructure and pipeline, authored (depends: Wave 4) · 6 h `[D3 code] [POST run]`
 
-- [ ] 7.1 Bicep modules: observability, identity, key vault, cosmos, container apps, apim, apim-api, static web app (2.5 h)
-- [ ] 7.2 `main.bicep`, demo parameters, placeholder-image pattern _(P-11)_ (1 h)
+- [x] 7.1 Bicep modules: observability, identity, key vault, cosmos, container apps, apim, apim-api, static web app (2.5 h)
+- [x] 7.2 `main.bicep`, demo parameters, placeholder-image pattern _(P-11)_ (1 h)
 - [ ] 7.3 `bicep build` and lint wired into the build stage so the templates are verified without a subscription _(AC-9.2)_ (0.5 h)
 - [ ] 7.4 `azure-pipelines.yml`, eight stages with gates _(AC-9.1, AC-9.3, AC-9.4)_ (1.5 h)
 - [ ] 7.5 Idempotent seeding script over the admin API _(AC-9.5, AC-9.6)_ (0.5 h)
