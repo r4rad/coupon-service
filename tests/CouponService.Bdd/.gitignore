@@ -1,0 +1,2 @@
+# Reqnroll regenerates these beside the .feature files on build.
+*.feature.cs
