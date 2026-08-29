@@ -95,6 +95,8 @@ public sealed class BicepInfrastructureTests
         var apim = Read(Path.Combine("modules", "apim.bicep"));
         Assert.Contains("name: 'Consumption'", apim, StringComparison.Ordinal);
         Assert.DoesNotContain("name: 'Developer'", apim, StringComparison.Ordinal);
+        Assert.DoesNotContain("name: 'Standard'", apim, StringComparison.Ordinal);
+        Assert.DoesNotContain("name: 'Premium'", apim, StringComparison.Ordinal);
 
         var cosmos = Read(Path.Combine("modules", "cosmos.bicep"));
         Assert.Contains("name: 'EnableServerless'", cosmos, StringComparison.Ordinal);
@@ -102,10 +104,14 @@ public sealed class BicepInfrastructureTests
 
         var acr = Read(Path.Combine("modules", "acr.bicep"));
         Assert.Contains("name: 'Basic'", acr, StringComparison.Ordinal);
+        // ACR Basic is the only accepted charge — Standard/Premium would violate NFR-6.
+        Assert.DoesNotContain("name: 'Standard'", acr, StringComparison.Ordinal);
+        Assert.DoesNotContain("name: 'Premium'", acr, StringComparison.Ordinal);
 
         var staticWebApp = Read(Path.Combine("modules", "staticwebapp.bicep"));
         Assert.Contains("name: 'Free'", staticWebApp, StringComparison.Ordinal);
         Assert.Contains("tier: 'Free'", staticWebApp, StringComparison.Ordinal);
+        Assert.DoesNotContain("name: 'Standard'", staticWebApp, StringComparison.Ordinal);
 
         var observability = Read(Path.Combine("modules", "observability.bicep"));
         Assert.Contains("dailyQuotaGb: dailyCapGb", observability, StringComparison.Ordinal);
@@ -113,9 +119,12 @@ public sealed class BicepInfrastructureTests
         var appService = Read(Path.Combine("modules", "appservice.bicep"));
         Assert.Contains("name: 'F1'", appService, StringComparison.Ordinal);
         Assert.Contains("tier: 'Free'", appService, StringComparison.Ordinal);
+        Assert.DoesNotContain("name: 'B1'", appService, StringComparison.Ordinal);
+        Assert.DoesNotContain("name: 'S1'", appService, StringComparison.Ordinal);
 
         var containerApps = Read(Path.Combine("modules", "containerapps.bicep"));
         Assert.Contains("minReplicas: 0", containerApps, StringComparison.Ordinal);
+        Assert.DoesNotContain("workloadProfiles", containerApps, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
