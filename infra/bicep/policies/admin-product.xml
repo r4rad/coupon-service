@@ -1,0 +1,32 @@
+<!--
+  Admin product policy (AC-9.7, AC-7.6).
+  Gateway checks Coupon.Admin; the application re-validates the JWT and role (defence in depth).
+-->
+<policies>
+  <inbound>
+    <base />
+    <validate-jwt header-name="Authorization" failed-validation-httpcode="401" failed-validation-error-message="Unauthorized" require-expiration-time="true" require-scheme="Bearer" output-token-variable-name="jwt">
+      <openid-config url="https://login.microsoftonline.com/{{entra-tenant-id}}/v2.0/.well-known/openid-configuration" />
+      <audiences>
+        <audience>{{jwt-audience}}</audience>
+      </audiences>
+      <issuers>
+        <issuer>https://login.microsoftonline.com/{{entra-tenant-id}}/v2.0</issuer>
+      </issuers>
+      <required-claims>
+        <claim name="roles" match="any">
+          <value>Coupon.Admin</value>
+        </claim>
+      </required-claims>
+    </validate-jwt>
+  </inbound>
+  <backend>
+    <base />
+  </backend>
+  <outbound>
+    <base />
+  </outbound>
+  <on-error>
+    <base />
+  </on-error>
+</policies>

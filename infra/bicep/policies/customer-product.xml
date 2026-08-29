@@ -1,0 +1,50 @@
+<!--
+  Customer product policy (AC-9.7, AC-7.6).
+  Named values jwt-audience, entra-tenant-id, spa-origin are provisioned in apim-api.bicep.
+  Health probes stay anonymous; all other customer routes require a bearer JWT.
+-->
+<policies>
+  <inbound>
+    <base />
+    <cors allow-credentials="false">
+      <allowed-origins>
+        <origin>{{spa-origin}}</origin>
+      </allowed-origins>
+      <allowed-methods>
+        <method>GET</method>
+        <method>POST</method>
+        <method>OPTIONS</method>
+      </allowed-methods>
+      <allowed-headers>
+        <header>Authorization</header>
+        <header>Content-Type</header>
+        <header>traceparent</header>
+        <header>X-Correlation-Id</header>
+      </allowed-headers>
+    </cors>
+    <choose>
+      <when condition="@(context.Request.Url.Path.Contains(&quot;/health/&quot;))">
+      </when>
+      <otherwise>
+        <validate-jwt header-name="Authorization" failed-validation-httpcode="401" failed-validation-error-message="Unauthorized" require-expiration-time="true" require-scheme="Bearer" output-token-variable-name="jwt">
+          <openid-config url="https://login.microsoftonline.com/{{entra-tenant-id}}/v2.0/.well-known/openid-configuration" />
+          <audiences>
+            <audience>{{jwt-audience}}</audience>
+          </audiences>
+          <issuers>
+            <issuer>https://login.microsoftonline.com/{{entra-tenant-id}}/v2.0</issuer>
+          </issuers>
+        </validate-jwt>
+      </otherwise>
+    </choose>
+  </inbound>
+  <backend>
+    <base />
+  </backend>
+  <outbound>
+    <base />
+  </outbound>
+  <on-error>
+    <base />
+  </on-error>
+</policies>
