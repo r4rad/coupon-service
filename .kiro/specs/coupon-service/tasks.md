@@ -76,9 +76,9 @@ Hour figures are focused-work estimates. `[D3]` means inside the committed 2–3
 
 - [x] 7.1 Bicep modules: observability, identity, key vault, cosmos, ACR, container apps, apim, apim-api, static web app _(CS-25)_ (2.5 h)
 - [x] 7.2 `main.bicep`, demo parameters, placeholder-image pattern _(P-11, CS-25)_ (1 h)
-- [ ] 7.3 `bicep build` and lint verified locally and as Azure Pipelines CI stages _(AC-9.2, CS-25, CS-26)_ (0.5 h)
-- [ ] 7.4 `azure-pipelines.yml` only: PR CI (build/test/bicep) and eight-stage CD with gates — **no GitHub Actions** _(AC-9.1, AC-9.3, AC-9.4, CS-26)_ (1.5 h)
-- [ ] 7.5 Idempotent seeding script over the admin API _(AC-9.5, AC-9.6, CS-26)_ (0.5 h)
+- [x] 7.3 `bicep build` and lint verified locally and as Azure Pipelines CI stages _(AC-9.2, CS-25, CS-26)_ (0.5 h)
+- [x] 7.4 `azure-pipelines.yml` only: PR CI (build/test/bicep) and eight-stage CD with gates — **no GitHub Actions** _(AC-9.1, AC-9.3, AC-9.4, CS-26)_ (1.5 h)
+- [x] 7.5 Idempotent seeding script over the admin API _(AC-9.5, AC-9.6, CS-26)_ (0.5 h)
 
 ## Wave 8 — Live Azure verification `[POST]` · tickets CS-27 … CS-30
 
