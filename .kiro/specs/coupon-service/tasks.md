@@ -62,9 +62,9 @@ Hour figures are focused-work estimates. `[D3]` means inside the committed 2–3
 
 ## Wave 5 — BDD suite (depends: Wave 4) · 3 h `[D3]`
 
-- [ ] 5.1 Reqnroll project, configurable base URL and token provider so the same features run locally and via APIM later (0.75 h)
-- [ ] 5.2 Feature files covering the eleven scenarios in the design of record _(AC-10.1)_ (1 h)
-- [ ] 5.3 Step definitions, run-scoped policy prefix, seed and teardown hooks _(AC-10.4)_ (1.25 h)
+- [x] 5.1 Reqnroll project, configurable base URL and token provider so the same features run locally and via APIM later (0.75 h)
+- [x] 5.2 Feature files covering the eleven scenarios in the design of record _(AC-10.1)_ (1 h)
+- [x] 5.3 Step definitions, run-scoped policy prefix, seed and teardown hooks _(AC-10.4)_ (1.25 h)
 
 ## Wave 6 — Cosmos adapter (depends: Wave 3) · 4 h `[D3 code] [POST verified]`
 
