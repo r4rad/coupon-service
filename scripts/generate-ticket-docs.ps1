@@ -370,6 +370,30 @@ function New-IndexMarkdown {
     $L.Add('agents editing the same working tree will collide; give each its own worktree or branch.')
     $L.Add('')
 
+    $L.Add('## CI and CD')
+    $L.Add('')
+    $L.Add('**Azure Pipelines only.** There is no GitHub Actions workflow in this delivery. PR builds and')
+    $L.Add('the eight-stage deploy path both live in `azure-pipelines.yml` (CS-26), run on Azure DevOps.')
+    $L.Add('')
+
+    $late = @($spec.tickets | Where-Object { $_.wave -ge 7 } | Sort-Object { $_.id })
+    if ($late.Count -gt 0) {
+        $L.Add('## Remaining path (Wave 7+)')
+        $L.Add('')
+        $L.Add('After CS-01 through CS-24 are merged, work this sequence. CS-25 and CS-26 can start in')
+        $L.Add('parallel once their dependencies are met; CS-27 needs CS-25 merged; CS-28 needs CS-27;')
+        $L.Add('CS-29 needs CS-26 and CS-28; CS-30 needs CS-29.')
+        $L.Add('')
+        $L.Add('| Ticket | Title | Blocked by |')
+        $L.Add('|---|---|---|')
+        foreach ($t in $late) {
+            $dep = '—'
+            if ($t.depends -and $t.depends.Count -gt 0) { $dep = ($t.depends -join ', ') }
+            $L.Add("| [$($t.id)]($($fileNames[$t.id])) | $($t.title) | $dep |")
+        }
+        $L.Add('')
+    }
+
     $L.Add('## Blocked on Azure')
     $L.Add('')
     $azure = @($spec.tickets | Where-Object { $_.labels -contains 'blocked:azure' } | ForEach-Object { $_.id })
@@ -379,7 +403,8 @@ function New-IndexMarkdown {
         $L.Add('deployment that did not happen.')
     }
     else {
-        $L.Add('None.')
+        $L.Add('None. Live provision and CD proof are CS-27 through CS-29; they assume a subscription and')
+        $L.Add('`rg-coupon-demo` already exist.')
     }
     $L.Add('')
 

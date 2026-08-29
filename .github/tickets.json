@@ -12,7 +12,8 @@
     { "name": "wave-4", "color": "b60205", "description": "API, auth, logging" },
     { "name": "wave-5", "color": "fbca04", "description": "BDD suite" },
     { "name": "wave-6", "color": "006b75", "description": "Cosmos adapter" },
-    { "name": "wave-7", "color": "d93f0b", "description": "Infrastructure and pipeline" },
+    { "name": "wave-7", "color": "d93f0b", "description": "Infrastructure and pipeline authored" },
+    { "name": "wave-8", "color": "5319e7", "description": "Live Azure provision, Entra, CD run, docs" },
     { "name": "area:build", "color": "c5def5", "description": "Solution, packages, analyzers" },
     { "name": "area:engine", "color": "c5def5", "description": "Parser, compiler, evaluator" },
     { "name": "area:domain", "color": "c5def5", "description": "Money, cart, pricing" },
@@ -526,42 +527,189 @@
       "title": "Bicep modules for the whole environment",
       "wave": 7,
       "size": "L",
-      "labels": ["wave-7", "area:infra", "blocked:azure"],
+      "labels": ["wave-7", "area:infra"],
       "depends": ["CS-01"],
-      "goal": "Author infrastructure that provisions everything from an empty resource group. Cannot be deployed until a subscription exists, so correctness is established by build and lint.",
+      "goal": "Author infrastructure that can provision the full demo from an empty resource group. Correctness for this ticket is bicep build and lint; the first live apply is CS-27.",
       "scope": ["infra/bicep/"],
-      "outOfScope": ["Actually deploying. Never report a deployment that did not happen."],
+      "outOfScope": [
+        "Applying the templates to Azure. That is CS-27.",
+        "Do not invent a second CI system. Azure Pipelines (CS-26) is the only pipeline."
+      ],
       "acceptance": ["AC-9.1", "AC-9.2", "NFR-6"],
       "steps": [
-        "Modules: observability, identity, keyvault, cosmos, containerapps, apim, apim-api, staticwebapp, and an appservice fallback.",
-        "main.bicep composing them, with main.demo.bicepparam carrying no secrets.",
-        "Pin the free and near-free SKUs from section 17: APIM Consumption, Container Apps consumption, Static Web Apps Free, Cosmos serverless with a free-tier switch, Log Analytics with a daily cap.",
+        "Modules: observability, identity, keyvault, cosmos, acr, containerapps, apim, apim-api, staticwebapp, and an appservice fallback.",
+        "main.bicep composing them, with main.demo.bicepparam carrying no secrets. Parameters for location default to westeurope; resource group name is not baked into the template.",
+        "Pin the free and near-free SKUs from section 17: APIM Consumption, Container Apps consumption, Static Web Apps Free, Cosmos serverless with a free-tier switch, Log Analytics with a daily cap, ACR Basic as the only paid SKU.",
         "Container Apps are created with a public placeholder image, per decision P-11, so the first deploy into an empty resource group does not deadlock on a registry that has no image yet.",
         "Tag every resource with project, env and owner so cost can be filtered and the environment deleted in one command.",
-        "Verify with bicep build and bicep lint. State plainly in the pull request that no deployment has been attempted."
+        "Verify with az bicep build and az bicep lint. Do not run az deployment group create in this ticket."
       ],
-      "verify": ["az bicep build --file infra/bicep/main.bicep --stdout"]
+      "verify": [
+        "az bicep build --file infra/bicep/main.bicep --stdout",
+        "az bicep lint --file infra/bicep/main.bicep"
+      ]
     },
     {
       "id": "CS-26",
-      "title": "Azure Pipelines definition, seeding and template linting",
+      "title": "Azure Pipelines CI and CD definition with seeding",
       "wave": 7,
       "size": "L",
-      "labels": ["wave-7", "area:infra", "blocked:azure"],
+      "labels": ["wave-7", "area:infra"],
       "depends": ["CS-22", "CS-25"],
-      "goal": "Define the eight-stage pipeline that deploys the whole solution from scratch with no manual steps, and prove the templates lint in CI without a subscription.",
-      "scope": ["azure-pipelines.yml", "scripts/seed-policies.ps1", ".github/workflows/"],
-      "outOfScope": ["Running the deployment stages, which needs a subscription and a service connection."],
+      "goal": "Define a single Azure Pipelines YAML that is both CI and CD: PR builds run build, test and bicep lint; main runs the full eight-stage deploy path. No GitHub Actions.",
+      "scope": [
+        "azure-pipelines.yml",
+        "scripts/seed-policies.ps1",
+        "docs/pipeline-prerequisites.md"
+      ],
+      "outOfScope": [
+        "Creating the Azure DevOps project or service connection (one-time manual steps documented in docs/pipeline-prerequisites.md).",
+        "A green full CD run against the live subscription. That is CS-29.",
+        "Any GitHub Actions workflow. Azure Pipelines is the only CI and CD system."
+      ],
       "acceptance": ["AC-9.1", "AC-9.2", "AC-9.3", "AC-9.4", "AC-9.5", "AC-9.6"],
       "steps": [
-        "Stages: build, test, package, provision, deploy, seed, BDD, verify, with the gates from section 18. Test failure must stop the pipeline before anything deploys.",
-        "Authenticate with a workload-identity federated service connection. No secret in the pipeline, ever.",
-        "Publish the Bicep what-if output as an artifact before applying changes.",
-        "Idempotent seeding through the admin API for the deterministic policy set, safe to re-run.",
-        "Add a GitHub Actions workflow running build, test and bicep lint on pull requests, so the repository has working CI even before Azure DevOps is wired up.",
-        "Document the three one-time manual prerequisites and confirm nothing else is manual."
+        "Single azure-pipelines.yml with eight stages matching section 18: build, test, package, provision, deploy, seed, BDD, verify.",
+        "PR trigger (CI): run only build, test, and bicep build/lint. Fail the run if tests fail. Do not provision or deploy on PRs.",
+        "Main or manual trigger (CD): run all eight stages. Test failure must stop the pipeline before provision or deploy (AC-9.4).",
+        "Authenticate with a workload-identity federated Azure Resource Manager service connection. No client secret in the YAML or variable group (AC-9.3).",
+        "Provision stage: publish az deployment group what-if as a pipeline artifact, then apply. Parameters reference the existing resource group (rg-coupon-demo) and subscription via pipeline variables — never hard-code secrets.",
+        "Idempotent scripts/seed-policies.ps1 through the admin API for the deterministic policy set, safe to re-run (AC-9.5, AC-9.6).",
+        "Document the three one-time manual prerequisites in docs/pipeline-prerequisites.md: Azure DevOps project, WIF service connection scoped to the subscription or rg-coupon-demo, and Entra app registration permission. Confirm nothing else is manual."
       ],
-      "verify": ["dotnet build CouponService.slnx", "dotnet test CouponService.slnx"]
+      "verify": [
+        "dotnet build CouponService.slnx",
+        "dotnet test CouponService.slnx",
+        "az bicep build --file infra/bicep/main.bicep --stdout"
+      ]
+    },
+    {
+      "id": "CS-27",
+      "title": "First Bicep provision into rg-coupon-demo",
+      "wave": 8,
+      "size": "L",
+      "labels": ["wave-8", "area:infra"],
+      "depends": ["CS-25"],
+      "goal": "Apply the authored Bicep into the existing empty resource group rg-coupon-demo in westeurope and iterate until provisioning succeeds with demo SKUs.",
+      "scope": [
+        "infra/bicep/",
+        "docs/deployment.md"
+      ],
+      "outOfScope": [
+        "Entra JWT policies and managed-identity app roles (CS-28).",
+        "Wiring or running Azure Pipelines CD (CS-29).",
+        "Do not commit subscription IDs, tenant IDs or connection strings. Use az account and local parameters or user-secrets only."
+      ],
+      "acceptance": ["AC-9.1", "AC-9.2", "NFR-6"],
+      "steps": [
+        "Confirm az account points at the demo subscription and resource group rg-coupon-demo exists in westeurope.",
+        "Run az deployment group what-if against rg-coupon-demo, capture the output, then az deployment group create. Fix template issues in atomic commits until create succeeds.",
+        "Prove Cosmos free-tier or serverless, APIM Consumption, Container Apps consumption, and ACR Basic match NFR-6. No Developer-tier APIM.",
+        "Confirm Container Apps are running the P-11 placeholder image so a later image push can update revisions without a chicken-and-egg.",
+        "Start docs/deployment.md with the exact what-if and create commands used, resource list, and how to tear down with az group delete. Expand further in CS-30 if needed.",
+        "Never invent a successful deployment. Paste observed command output into the pull request."
+      ],
+      "verify": [
+        "az bicep build --file infra/bicep/main.bicep --stdout",
+        "az deployment group what-if --resource-group rg-coupon-demo --template-file infra/bicep/main.bicep --parameters infra/bicep/main.demo.bicepparam"
+      ]
+    },
+    {
+      "id": "CS-28",
+      "title": "Entra apps, APIM JWT policies and managed identity hop",
+      "wave": 8,
+      "size": "L",
+      "labels": ["wave-8", "area:security", "area:infra"],
+      "depends": ["CS-27"],
+      "goal": "Make the deployed edge and the Order-to-Coupon hop real: APIM JWT validation and rate limiting, plus managed identity with app roles for the internal call.",
+      "scope": [
+        "infra/bicep/",
+        "infra/bicep/policies/",
+        "src/CouponService.Api/",
+        "src/OrderApi/",
+        "docs/authentication.md"
+      ],
+      "outOfScope": [
+        "Full Azure Pipelines CD green run (CS-29).",
+        "simulate and shadow endpoints (deferred).",
+        "React SPA."
+      ],
+      "acceptance": ["AC-9.7", "AC-7.6", "AC-7.7"],
+      "steps": [
+        "Register Entra applications and app roles needed for customer, admin, and service-to-service calls. Document client IDs in docs/authentication.md; secrets stay in Key Vault or pipeline variable groups, never in git.",
+        "APIM products and policies: validate-jwt at the gateway and rate limiting on customer routes (AC-9.7, AC-7.6). Application still validates the token (double validation).",
+        "Order API acquires a token via managed identity and calls Coupon Service with the required app role; no shared secret (AC-7.7).",
+        "Keep mutation or internal routes off public APIM products where Container Apps internal ingress applies.",
+        "Apply Bicep or policy XML updates and re-deploy only what changed. Prove with a manual call through APIM that anonymous fails and a valid token succeeds."
+      ],
+      "verify": [
+        "dotnet build CouponService.slnx",
+        "dotnet test CouponService.slnx",
+        "az bicep build --file infra/bicep/main.bicep --stdout"
+      ]
+    },
+    {
+      "id": "CS-29",
+      "title": "Wire Azure Pipelines CD and prove a green full run",
+      "wave": 8,
+      "size": "L",
+      "labels": ["wave-8", "area:infra", "area:test"],
+      "depends": ["CS-26", "CS-28"],
+      "goal": "Connect azure-pipelines.yml to Azure DevOps with a WIF service connection and obtain one green eight-stage run: provision, deploy, seed, BDD through APIM, verify.",
+      "scope": [
+        "azure-pipelines.yml",
+        "scripts/seed-policies.ps1",
+        "tests/CouponService.Bdd/",
+        "docs/pipeline-prerequisites.md",
+        "docs/deployment.md"
+      ],
+      "outOfScope": [
+        "Authoring Bicep from scratch (CS-25) or first manual provision (CS-27).",
+        "GitHub Actions. Do not add any.",
+        "simulate, shadow, alerts workbook, React SPA."
+      ],
+      "acceptance": ["AC-9.1", "AC-9.3", "AC-9.4", "AC-9.5", "AC-9.6", "AC-10.1"],
+      "steps": [
+        "Complete the documented one-time prerequisites if not already done: public or suitably licensed Azure DevOps project, WIF service connection to the subscription or rg-coupon-demo, pipeline pointing at azure-pipelines.yml.",
+        "Set pipeline variables for resource group, location, and service connection name. No secrets in the YAML file.",
+        "Run the full CD path on main or via manual run. If a stage fails, fix in atomic commits and re-run until green. Capture the run URL in the pull request.",
+        "Point the BDD suite at the APIM gateway base URL with the configured token strategy so the same features from CS-22 run through the gateway (AC-10.1).",
+        "Re-run the pipeline once to prove seed and provision are idempotent (AC-9.6).",
+        "Update docs/deployment.md with the observed stage order and how to trigger a run."
+      ],
+      "verify": [
+        "dotnet build CouponService.slnx",
+        "dotnet test CouponService.slnx"
+      ]
+    },
+    {
+      "id": "CS-30",
+      "title": "Deployment and authentication docs plus P-12 correction",
+      "wave": 8,
+      "size": "M",
+      "labels": ["wave-8", "area:infra"],
+      "depends": ["CS-29"],
+      "goal": "Leave the reviewer with clear deployment and authentication write-ups, and correct the APIM cache claim per decision P-12.",
+      "scope": [
+        "docs/deployment.md",
+        "docs/authentication.md",
+        "docs/solution-architecture.md",
+        "docs/assumptions.md",
+        "README.md"
+      ],
+      "outOfScope": [
+        "Further infrastructure changes unless a doc reveals a factual error, which must be fixed and called out.",
+        "React SPA (optional stretch, not this ticket)."
+      ],
+      "acceptance": ["AC-9.1", "AC-9.7", "AC-7.6", "AC-7.7"],
+      "steps": [
+        "Complete docs/deployment.md: empty RG to green pipeline, teardown, SKUs, what-if requirement, link to azure-pipelines.yml.",
+        "Complete docs/authentication.md: Entra apps, roles, APIM validate-jwt, managed identity hop, local test-token guard behaviour.",
+        "Apply P-12: edit docs/solution-architecture.md so it no longer claims APIM Consumption response caching; document Static Web Apps CDN plus backend ETag and Cache-Control instead.",
+        "Write docs/assumptions.md for currency, region, SKUs, and anything deferred (simulate, shadow, SPA).",
+        "Point README.md at these docs so a reviewer finds them in one hop."
+      ],
+      "verify": ["dotnet build CouponService.slnx"]
     }
   ]
 }

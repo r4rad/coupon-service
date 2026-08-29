@@ -1,12 +1,12 @@
-﻿# CS-25: Bicep modules for the whole environment
+﻿# CS-30: Deployment and authentication docs plus P-12 correction
 
 | | |
 |---|---|
-| **Wave** | 7 — Infrastructure and pipeline authored |
-| **Size** | L |
-| **Labels** | `wave-7, area:infra, size:L` |
-| **Blocked by** | [CS-01](CS-01-solution-wiring-central-packages-and-build-gates.md) |
-| **Blocks** | [CS-26](CS-26-azure-pipelines-ci-and-cd-definition-with-seeding.md), [CS-27](CS-27-first-bicep-provision-into-rg-coupon-demo.md) |
+| **Wave** | 8 — Live Azure provision, Entra, CD run, docs |
+| **Size** | M |
+| **Labels** | `wave-8, area:infra, size:M` |
+| **Blocked by** | [CS-29](CS-29-wire-azure-pipelines-cd-and-prove-a-green-full-run.md) |
+| **Blocks** | — |
 
 > **Read [`AGENTS.md`](../../AGENTS.md) before starting.** It carries the standing rules —
 > money as `decimal`, engine purity, determinism via `IClock`, scope discipline, the definition
@@ -14,15 +14,19 @@
 
 ## Goal
 
-Author infrastructure that can provision the full demo from an empty resource group. Correctness for this ticket is bicep build and lint; the first live apply is CS-27.
+Leave the reviewer with clear deployment and authentication write-ups, and correct the APIM cache claim per decision P-12.
 
 ## Blocked by
 
-- CS-01 — Solution wiring, central packages and build gates
+- CS-29 — Wire Azure Pipelines CD and prove a green full run
 
 ## Scope — touch only these paths
 
-- `infra/bicep/`
+- `docs/deployment.md`
+- `docs/authentication.md`
+- `docs/solution-architecture.md`
+- `docs/assumptions.md`
+- `README.md`
 
 You may additionally add your own new test files, and tick the matching checkboxes in
 `.kiro/specs/coupon-service/tasks.md`. Any other file you touch must be called out in the
@@ -30,8 +34,8 @@ pull request under a heading `Out-of-scope changes`.
 
 ## Out of scope
 
-- Applying the templates to Azure. That is CS-27.
-- Do not invent a second CI system. Azure Pipelines (CS-26) is the only pipeline.
+- Further infrastructure changes unless a doc reveals a factual error, which must be fixed and called out.
+- React SPA (optional stretch, not this ticket).
 
 ## Acceptance criteria
 
@@ -39,19 +43,19 @@ Defined in [`requirements.md`](../../.kiro/specs/coupon-service/requirements.md)
 one up and read the full text; do not infer it from the identifier. This ticket satisfies:
 
 - **AC-9.1**
-- **AC-9.2**
-- **NFR-6**
+- **AC-9.7**
+- **AC-7.6**
+- **AC-7.7**
 
 Each one needs a test that would fail without this change.
 
 ## Implementation notes
 
-- Modules: observability, identity, keyvault, cosmos, acr, containerapps, apim, apim-api, staticwebapp, and an appservice fallback.
-- main.bicep composing them, with main.demo.bicepparam carrying no secrets. Parameters for location default to westeurope; resource group name is not baked into the template.
-- Pin the free and near-free SKUs from section 17: APIM Consumption, Container Apps consumption, Static Web Apps Free, Cosmos serverless with a free-tier switch, Log Analytics with a daily cap, ACR Basic as the only paid SKU.
-- Container Apps are created with a public placeholder image, per decision P-11, so the first deploy into an empty resource group does not deadlock on a registry that has no image yet.
-- Tag every resource with project, env and owner so cost can be filtered and the environment deleted in one command.
-- Verify with az bicep build and az bicep lint. Do not run az deployment group create in this ticket.
+- Complete docs/deployment.md: empty RG to green pipeline, teardown, SKUs, what-if requirement, link to azure-pipelines.yml.
+- Complete docs/authentication.md: Entra apps, roles, APIM validate-jwt, managed identity hop, local test-token guard behaviour.
+- Apply P-12: edit docs/solution-architecture.md so it no longer claims APIM Consumption response caching; document Static Web Apps CDN plus backend ETag and Cache-Control instead.
+- Write docs/assumptions.md for currency, region, SKUs, and anything deferred (simulate, shadow, SPA).
+- Point README.md at these docs so a reviewer finds them in one hop.
 
 ## Verification
 
@@ -59,54 +63,54 @@ All of these must pass, with zero warnings. Do not suppress an analyzer to get t
 
 ```powershell
 dotnet build CouponService.slnx
-az bicep build --file infra/bicep/main.bicep --stdout
-az bicep lint --file infra/bicep/main.bicep
 dotnet test CouponService.slnx
 ```
 
 ## Prompt
 
-Confirm CS-01 is merged, then paste this into a fresh Cursor
+Confirm CS-29 is merged, then paste this into a fresh Cursor
 chat in this repository. Nothing else is needed: everything is either in the prompt or in a
 file the prompt names.
 
 ```text
-Implement ticket CS-25 in this repository, end to end.
+Implement ticket CS-30 in this repository, end to end.
 
 Read these first, in order. They are the contract and they override anything you assume:
-  1. .github/tickets/CS-25-bicep-modules-for-the-whole-environment.md
+  1. .github/tickets/CS-30-deployment-and-authentication-docs-plus-p-12.md
      This ticket: goal, scope, out of scope, acceptance criteria, implementation notes, verification.
   2. AGENTS.md
      Standing rules: money as decimal, engine purity, determinism via the injected IClock,
      scope discipline, warnings as errors, git conventions, PowerShell 5.1 environment.
   3. .kiro/specs/coupon-service/requirements.md
-     The full text of AC-9.1, AC-9.2, NFR-6. Look each one up and read it. Do not
+     The full text of AC-9.1, AC-9.7, AC-7.6, AC-7.7. Look each one up and read it. Do not
      infer an acceptance criterion from its identifier.
   4. .kiro/specs/coupon-service/design.md
      Decisions P-1 to P-12 and the exact type signatures. Overrides docs/solution-architecture.md
      where the two differ. Consult the architecture document for the reasoning behind a decision.
 
 Then:
-  1. Create branch ticket/CS-25-bicep-modules-for-the-whole-environment from the latest main.
+  1. Create branch ticket/CS-30-deployment-and-authentication-docs-plus from the latest main.
   2. Implement the ticket, touching only these paths:
-       infra/bicep/
+       docs/deployment.md
+       docs/authentication.md
+       docs/solution-architecture.md
+       docs/assumptions.md
+       README.md
      Plus your own new test files, and the checkboxes in .kiro/specs/coupon-service/tasks.md.
      Do not reformat or tidy a file you did not otherwise need to change. If you genuinely
      need a file outside this list, change it and say so in the pull request.
   3. Add no NuGet package. If you believe one is required, stop and say why.
   4. Verify. Every command must pass, with zero warnings:
        dotnet build CouponService.slnx
-       az bicep build --file infra/bicep/main.bicep --stdout
-       az bicep lint --file infra/bicep/main.bicep
        dotnet test CouponService.slnx
      Each acceptance criterion needs a test that fails without your change. Prove that by
      reverting the change mentally, or temporarily, and confirming the test goes red.
   5. Tick the matching checkboxes in .kiro/specs/coupon-service/tasks.md.
   6. Commit in atomic, granular steps as you go - one logical change each, every commit
-     building - with subjects of the form "CS-25: <imperative summary>". Do not squash the
+     building - with subjects of the form "CS-30: <imperative summary>". Do not squash the
      branch into a single commit; the granularity is what makes the pull request reviewable.
      Add no trailer of any kind: no Co-Authored-By, no Signed-off-by, no tool attribution.
-  7. Push the branch and open a pull request titled "CS-25: Bicep modules for the whole environment".
+  7. Push the branch and open a pull request titled "CS-30: Deployment and authentication docs plus P-12 correction".
      In the body, list every acceptance criterion satisfied, anything deliberately deferred,
      and any out-of-scope change you had to make.
 
