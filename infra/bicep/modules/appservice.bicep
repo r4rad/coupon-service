@@ -23,6 +23,15 @@ param orderIdentityId string
 @description('User-assigned identity client id for the order API.')
 param orderIdentityClientId string
 
+@description('Entra authority used by the Coupon Service JwtBearer middleware (AC-7.6).')
+param jwtAuthority string
+
+@description('Coupon Service API audience / Application ID URI.')
+param couponApiAudience string
+
+@description('OAuth scope the Order API requests with managed identity (AC-7.7).')
+param couponServiceScope string
+
 @description('Resource tags. Must include project, env and owner.')
 param tags object
 
@@ -67,6 +76,22 @@ resource couponApp 'Microsoft.Web/sites@2023-12-01' = {
           name: 'AZURE_CLIENT_ID'
           value: couponIdentityClientId
         }
+        {
+          name: 'Authentication__Jwt__Authority'
+          value: jwtAuthority
+        }
+        {
+          name: 'Authentication__Jwt__Audience'
+          value: couponApiAudience
+        }
+        {
+          name: 'Authentication__Jwt__Issuer'
+          value: jwtAuthority
+        }
+        {
+          name: 'Authentication__TestToken__Enabled'
+          value: 'false'
+        }
       ]
     }
   }
@@ -97,6 +122,22 @@ resource orderApp 'Microsoft.Web/sites@2023-12-01' = {
         {
           name: 'AZURE_CLIENT_ID'
           value: orderIdentityClientId
+        }
+        {
+          name: 'OrderApi__CouponServiceBaseUrl'
+          value: 'https://${couponApp.properties.defaultHostName}'
+        }
+        {
+          name: 'OrderApi__UseManagedIdentity'
+          value: 'true'
+        }
+        {
+          name: 'OrderApi__CouponServiceResource'
+          value: couponApiAudience
+        }
+        {
+          name: 'OrderApi__CouponServiceScope'
+          value: couponServiceScope
         }
       ]
     }

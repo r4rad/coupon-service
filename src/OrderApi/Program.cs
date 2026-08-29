@@ -12,12 +12,29 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOptions<OrderApiOptions>()
     .Bind(builder.Configuration.GetSection(OrderApiOptions.SectionName))
     .Validate(options => !string.IsNullOrWhiteSpace(options.CouponServiceBaseUrl), "CouponServiceBaseUrl is required")
+    .Validate(
+        options => !options.UseManagedIdentity || !string.IsNullOrWhiteSpace(options.CouponServiceResource),
+        "CouponServiceResource is required when UseManagedIdentity is true")
     .ValidateOnStart();
 
 builder.Services.AddSingleton<IPizzaCatalog, FilePizzaCatalog>();
 builder.Services.AddSingleton<IOrderRepository, InMemoryOrderRepository>();
 builder.Services.AddSingleton<IClock, SystemClock>();
-builder.Services.AddSingleton<ICouponServiceTokenProvider, ConfigurationCouponServiceTokenProvider>();
+
+builder.Services.AddHttpClient(ManagedIdentityCouponServiceTokenProvider.HttpClientName);
+
+var useManagedIdentity = builder.Configuration.GetValue(
+    $"{OrderApiOptions.SectionName}:UseManagedIdentity",
+    false);
+if (useManagedIdentity)
+{
+    builder.Services.AddSingleton<ICouponServiceTokenProvider, ManagedIdentityCouponServiceTokenProvider>();
+}
+else
+{
+    builder.Services.AddSingleton<ICouponServiceTokenProvider, ConfigurationCouponServiceTokenProvider>();
+}
+
 builder.Services.AddSingleton<IOrderCheckoutService, OrderCheckoutService>();
 
 builder.Services.AddHttpClient<ICouponServiceClient, HttpCouponServiceClient>((serviceProvider, client) =>
