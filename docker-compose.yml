@@ -1,0 +1,32 @@
+# Cosmos DB Linux emulator (vNext) for CouponService.IntegrationTests (AC-10.6, P-9).
+#
+# Start:  docker compose up -d
+# Stop:   docker compose down
+#
+# Startup: first image pull is large; after that the gateway is typically ready within
+# ~30–60 seconds. Prefer waiting on the readiness probe before tests:
+#   curl -fk https://localhost:8080/ready
+# Then:  dotnet test tests/CouponService.IntegrationTests
+#
+# Certificate: the emulator uses a self-signed HTTPS cert. The .NET Cosmos SDK requires
+# HTTPS (HTTP mode is not supported). Integration tests trust the emulator cert via an
+# HttpClientHandler callback (see CosmosEmulatorFixture). To trust it system-wide instead:
+#   openssl s_client -connect localhost:8081 -showcerts </dev/null 2>/dev/null \
+#     | openssl x509 -outform PEM > cosmos-emulator.crt
+#   (Windows) Import cosmos-emulator.crt into Current User → Trusted Root Certification Authorities
+#
+# Well-known emulator account key (public, not a secret):
+#   AccountEndpoint=https://localhost:8081/;AccountKey=C2y6y7l0Mh4REIkobijaOXPUXaddrtqksydEIs3DOReuFs5Spre5VbttG1HbQdr9JwYEgETuNXvXvKJ1hVicPg==
+
+services:
+  cosmos-emulator:
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest
+    container_name: coupon-cosmos-emulator
+    # .NET Cosmos SDK requires HTTPS; the image defaults to http.
+    environment:
+      PROTOCOL: https
+    ports:
+      - "8081:8081"   # Cosmos gateway
+      - "8080:8080"   # Liveness / readiness (/alive, /ready)
+      - "1234:1234"   # Data Explorer
+    mem_limit: 3g
