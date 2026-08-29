@@ -1,0 +1,430 @@
+# Sole CI and CD definition (P-13). No GitHub Actions.
+# PR CI: Build (incl. bicep build/lint) + Test. CD stages do not run on PRs.
+# Main or Manual: full eight-stage path from section 18.
+# Azure auth: workload-identity federated ARM service connection only (AC-9.3).
+
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
+
+parameters:
+  - name: resourceGroupName
+    displayName: Resource group (must already exist; template does not create it)
+    type: string
+    default: rg-coupon-demo
+  - name: azureServiceConnection
+    displayName: Workload-identity federated Azure Resource Manager service connection
+    type: string
+    default: coupon-demo-wif
+  - name: location
+    displayName: Azure region
+    type: string
+    default: westeurope
+
+variables:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  resourceGroupName: ${{ parameters.resourceGroupName }}
+  azureServiceConnection: ${{ parameters.azureServiceConnection }}
+  location: ${{ parameters.location }}
+  # CD on main merges and on explicit Manual runs. PullRequest never sets this path.
+  isCD: $[or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.Reason'], 'Manual'))]
+
+stages:
+  # --- 1 BUILD ---
+  - stage: Build
+    displayName: '1 Build'
+    jobs:
+      - job: Build
+        displayName: Restore, build, bicep lint
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: self
+
+          - task: UseDotNet@2
+            displayName: Install .NET SDK from global.json
+            inputs:
+              packageType: sdk
+              useGlobalJson: true
+
+          - task: DotNetCoreCLI@2
+            displayName: dotnet restore
+            inputs:
+              command: restore
+              projects: CouponService.slnx
+
+          - task: DotNetCoreCLI@2
+            displayName: dotnet build (warnings as errors via Directory.Build.props)
+            inputs:
+              command: build
+              projects: CouponService.slnx
+              arguments: --no-restore --configuration Release
+
+          - bash: |
+              set -euo pipefail
+              az bicep build --file infra/bicep/main.bicep --stdout > /dev/null
+              az bicep lint --file infra/bicep/main.bicep
+            displayName: az bicep build and lint
+
+  # --- 2 TEST ---
+  - stage: Test
+    displayName: '2 Test'
+    dependsOn: Build
+    condition: succeeded()
+    jobs:
+      - job: Test
+        displayName: Unit, engine, API, BDD (in-process)
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: self
+
+          - task: UseDotNet@2
+            displayName: Install .NET SDK from global.json
+            inputs:
+              packageType: sdk
+              useGlobalJson: true
+
+          - task: DotNetCoreCLI@2
+            displayName: dotnet test
+            inputs:
+              command: test
+              projects: CouponService.slnx
+              arguments: --configuration Release --no-build false
+              publishTestResults: true
+
+  # --- 3 PACKAGE (CD only) ---
+  - stage: Package
+    displayName: '3 Package'
+    dependsOn: Test
+    # AC-9.4 — Test must succeed before anything packaged or deployed; PRs never reach here.
+    condition: and(succeeded(), eq(variables['isCD'], 'true'))
+    jobs:
+      - job: Package
+        displayName: Publish API outputs and OpenAPI
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: self
+
+          - task: UseDotNet@2
+            displayName: Install .NET SDK from global.json
+            inputs:
+              packageType: sdk
+              useGlobalJson: true
+
+          - task: DotNetCoreCLI@2
+            displayName: Publish CouponService.Api
+            inputs:
+              command: publish
+              publishWebProjects: false
+              projects: src/CouponService.Api/CouponService.Api.csproj
+              arguments: --configuration Release --output $(Build.ArtifactStagingDirectory)/coupon-api
+              zipAfterPublish: false
+
+          - task: DotNetCoreCLI@2
+            displayName: Publish OrderApi
+            inputs:
+              command: publish
+              publishWebProjects: false
+              projects: src/OrderApi/OrderApi.csproj
+              arguments: --configuration Release --output $(Build.ArtifactStagingDirectory)/order-api
+              zipAfterPublish: false
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish coupon-api artifact
+            inputs:
+              targetPath: $(Build.ArtifactStagingDirectory)/coupon-api
+              artifact: coupon-api
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish order-api artifact
+            inputs:
+              targetPath: $(Build.ArtifactStagingDirectory)/order-api
+              artifact: order-api
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish OpenAPI snapshots when present
+            inputs:
+              targetPath: docs/api/generated
+              artifact: openapi
+            condition: succeeded()
+
+  # --- 4 PROVISION (CD only) ---
+  - stage: Provision
+    displayName: '4 Provision'
+    dependsOn:
+      - Test
+      - Package
+    # Depends on Test as well so a Test failure can never reach create (AC-9.4).
+    condition: and(succeeded(), eq(variables['isCD'], 'true'))
+    jobs:
+      - job: Provision
+        displayName: Bicep what-if then create
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: self
+
+          - task: AzureCLI@2
+            displayName: az deployment group what-if
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -euo pipefail
+                mkdir -p "$(Build.ArtifactStagingDirectory)/what-if"
+                az deployment group what-if \
+                  --resource-group "$(resourceGroupName)" \
+                  --template-file infra/bicep/main.bicep \
+                  --parameters infra/bicep/main.demo.bicepparam \
+                  > "$(Build.ArtifactStagingDirectory)/what-if/what-if.txt"
+
+          # AC-9.2 — what-if must be published as an artifact before create applies changes.
+          - task: PublishPipelineArtifact@1
+            displayName: Publish what-if result before apply
+            inputs:
+              targetPath: $(Build.ArtifactStagingDirectory)/what-if
+              artifact: bicep-what-if
+
+          - task: AzureCLI@2
+            displayName: az deployment group create
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -euo pipefail
+                mkdir -p "$(Build.ArtifactStagingDirectory)/provision-outputs"
+                az deployment group create \
+                  --resource-group "$(resourceGroupName)" \
+                  --template-file infra/bicep/main.bicep \
+                  --parameters infra/bicep/main.demo.bicepparam \
+                  --query properties.outputs \
+                  -o json > "$(Build.ArtifactStagingDirectory)/provision-outputs/outputs.json"
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish provision outputs
+            inputs:
+              targetPath: $(Build.ArtifactStagingDirectory)/provision-outputs
+              artifact: provision-outputs
+
+  # --- 5 DEPLOY (CD only) ---
+  - stage: Deploy
+    displayName: '5 Deploy'
+    dependsOn: Provision
+    condition: and(succeeded(), eq(variables['isCD'], 'true'))
+    jobs:
+      - job: Deploy
+        displayName: Update apps and wait for readiness
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: self
+
+          - download: current
+            artifact: coupon-api
+
+          - download: current
+            artifact: order-api
+
+          - download: current
+            artifact: provision-outputs
+
+          - bash: |
+              set -euo pipefail
+              # Provision leaves apps on the public placeholder image (P-11).
+              # Container image build/push from a Dockerfile is wired in CS-29.
+              COUPON_URL=$(jq -r '.couponBackendUrl.value // empty' "$(Pipeline.Workspace)/provision-outputs/outputs.json")
+              if [ -z "$COUPON_URL" ]; then
+                echo "couponBackendUrl missing from provision outputs; cannot probe readiness."
+                exit 1
+              fi
+              echo "##vso[task.setvariable variable=couponBackendUrl]$COUPON_URL"
+              ORDER_URL=$(jq -r '.orderBackendUrl.value // empty' "$(Pipeline.Workspace)/provision-outputs/outputs.json")
+              echo "##vso[task.setvariable variable=orderBackendUrl]$ORDER_URL"
+              APIM_URL=$(jq -r '.apimGatewayUrl.value // empty' "$(Pipeline.Workspace)/provision-outputs/outputs.json")
+              echo "##vso[task.setvariable variable=apimGatewayUrl]$APIM_URL"
+            displayName: Read provision outputs for readiness
+
+          - bash: |
+              set -euo pipefail
+              # Readiness probe must pass before Seed (section 18).
+              for i in $(seq 1 30); do
+                if curl -fsS "${COUPON_BACKEND_URL}/v1/health/ready"; then
+                  echo "Coupon API ready."
+                  exit 0
+                fi
+                sleep 10
+              done
+              echo "Coupon API readiness probe failed."
+              exit 1
+            displayName: Wait for coupon API readiness
+            env:
+              COUPON_BACKEND_URL: $(couponBackendUrl)
+
+  # --- 6 SEED (CD only) ---
+  - stage: Seed
+    displayName: '6 Seed'
+    dependsOn: Deploy
+    condition: and(succeeded(), eq(variables['isCD'], 'true'))
+    jobs:
+      - job: Seed
+        displayName: Idempotent deterministic policy seed
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: self
+
+          - download: current
+            artifact: provision-outputs
+
+          - pwsh: |
+              $outputsPath = Join-Path $env:PIPELINE_WORKSPACE 'provision-outputs/outputs.json'
+              $outputs = Get-Content -LiteralPath $outputsPath -Raw | ConvertFrom-Json
+              $base = $env:ADMIN_API_BASE_URL
+              if ([string]::IsNullOrWhiteSpace($base)) {
+                $apim = [string]$outputs.apimGatewayUrl.value
+                if (-not [string]::IsNullOrWhiteSpace($apim)) {
+                  $base = $apim.TrimEnd('/') + '/coupons'
+                }
+                else {
+                  $base = [string]$outputs.couponBackendUrl.value
+                }
+              }
+              if ([string]::IsNullOrWhiteSpace($base)) {
+                throw 'Admin API base URL could not be resolved from AdminApiBaseUrl or provision outputs.'
+              }
+              Write-Host "Seeding against $base"
+              Write-Host "##vso[task.setvariable variable=resolvedAdminBaseUrl]$base"
+              $order = $env:ORDER_API_BASE_URL
+              if ([string]::IsNullOrWhiteSpace($order)) {
+                $orderApim = [string]$outputs.apimGatewayUrl.value
+                if (-not [string]::IsNullOrWhiteSpace($orderApim)) {
+                  $order = $orderApim.TrimEnd('/') + '/orders'
+                }
+                else {
+                  $order = [string]$outputs.orderBackendUrl.value
+                }
+              }
+              Write-Host "##vso[task.setvariable variable=resolvedOrderBaseUrl]$order"
+            displayName: Resolve admin and order base URLs
+            env:
+              PIPELINE_WORKSPACE: $(Pipeline.Workspace)
+              ADMIN_API_BASE_URL: $(AdminApiBaseUrl)
+              ORDER_API_BASE_URL: $(OrderApiBaseUrl)
+
+          - task: PowerShell@2
+            displayName: Seed policies via admin API (AC-9.5, AC-9.6)
+            inputs:
+              targetType: filePath
+              filePath: scripts/seed-policies.ps1
+              arguments: >-
+                -BaseUrl "$(resolvedAdminBaseUrl)"
+                -BearerToken "$(AdminApiBearerToken)"
+              pwsh: true
+
+  # --- 7 BDD (CD only) ---
+  - stage: Bdd
+    displayName: '7 BDD'
+    dependsOn: Seed
+    condition: and(succeeded(), eq(variables['isCD'], 'true'))
+    jobs:
+      - job: Bdd
+        displayName: Reqnroll through APIM
+        pool:
+          vmImage: ubuntu-latest
+        variables:
+          # Prefer explicit ADO variables; Seed also writes guidance in docs for CS-29.
+          bddCouponBaseUrl: $(AdminApiBaseUrl)
+          bddOrderBaseUrl: $(OrderApiBaseUrl)
+        steps:
+          - checkout: self
+
+          - download: current
+            artifact: provision-outputs
+
+          - pwsh: |
+              $outputsPath = Join-Path $env:PIPELINE_WORKSPACE 'provision-outputs/outputs.json'
+              $outputs = Get-Content -LiteralPath $outputsPath -Raw | ConvertFrom-Json
+              $coupon = $env:ADMIN_API_BASE_URL
+              if ([string]::IsNullOrWhiteSpace($coupon)) {
+                $apim = [string]$outputs.apimGatewayUrl.value
+                if (-not [string]::IsNullOrWhiteSpace($apim)) {
+                  $coupon = $apim.TrimEnd('/') + '/coupons'
+                }
+                else {
+                  $coupon = [string]$outputs.couponBackendUrl.value
+                }
+              }
+              $order = $env:ORDER_API_BASE_URL
+              if ([string]::IsNullOrWhiteSpace($order)) {
+                $apim = [string]$outputs.apimGatewayUrl.value
+                if (-not [string]::IsNullOrWhiteSpace($apim)) {
+                  $order = $apim.TrimEnd('/') + '/orders'
+                }
+                else {
+                  $order = [string]$outputs.orderBackendUrl.value
+                }
+              }
+              Write-Host "##vso[task.setvariable variable=bddCouponBaseUrl]$coupon"
+              Write-Host "##vso[task.setvariable variable=bddOrderBaseUrl]$order"
+            displayName: Resolve BDD base URLs
+            env:
+              PIPELINE_WORKSPACE: $(Pipeline.Workspace)
+              ADMIN_API_BASE_URL: $(AdminApiBaseUrl)
+              ORDER_API_BASE_URL: $(OrderApiBaseUrl)
+
+          - task: UseDotNet@2
+            displayName: Install .NET SDK from global.json
+            inputs:
+              packageType: sdk
+              useGlobalJson: true
+
+          - task: DotNetCoreCLI@2
+            displayName: Reqnroll BDD against deployed stack
+            inputs:
+              command: test
+              projects: tests/CouponService.Bdd/CouponService.Bdd.csproj
+              arguments: --configuration Release
+              publishTestResults: true
+            env:
+              BDD_Bdd__Mode: Http
+              BDD_Bdd__CouponServiceBaseUrl: $(bddCouponBaseUrl)
+              BDD_Bdd__OrderApiBaseUrl: $(bddOrderBaseUrl)
+              BDD_Bdd__TokenStrategy: TestToken
+
+  # --- 8 VERIFY (CD only) ---
+  - stage: Verify
+    displayName: '8 Verify'
+    dependsOn: Bdd
+    condition: and(succeeded(), eq(variables['isCD'], 'true'))
+    jobs:
+      - job: Verify
+        displayName: Smoke and result summary
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - download: current
+            artifact: provision-outputs
+
+          - bash: |
+              set -euo pipefail
+              COUPON_URL="${ADMIN_API_BASE_URL:-}"
+              if [ -z "$COUPON_URL" ]; then
+                COUPON_URL=$(jq -r '.couponBackendUrl.value // empty' "$(Pipeline.Workspace)/provision-outputs/outputs.json")
+              fi
+              curl -fsS "${COUPON_URL}/v1/health/live"
+              curl -fsS "${COUPON_URL}/v1/health/ready"
+              echo "Smoke checks passed. Optional teardown is not performed (demo environment retained)."
+            displayName: Smoke health endpoints
+            env:
+              ADMIN_API_BASE_URL: $(AdminApiBaseUrl)
