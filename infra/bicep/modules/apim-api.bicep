@@ -7,7 +7,7 @@ param couponBackendUrl string
 @description('HTTPS base URL of the order API backend.')
 param orderBackendUrl string
 
-@description('Entra tenant id used for openid-config and issuer checks. Placeholder until apps are registered.')
+@description('Entra tenant id used for issuer named values.')
 param entraTenantId string
 
 @description('JWT audience for the Coupon Service API (Application ID URI).')
@@ -15,6 +15,12 @@ param couponApiAudience string
 
 @description('Allowed SPA origin for CORS on the customer product.')
 param spaOrigin string
+
+@description('OpenID Connect metadata URL for validate-jwt (built with environment().authentication.loginEndpoint).')
+param openIdConfigUrl string
+
+@description('Expected JWT issuer for validate-jwt.')
+param jwtIssuer string
 
 resource apim 'Microsoft.ApiManagement/service@2023-09-01-preview' existing = {
   name: apimName
@@ -26,6 +32,26 @@ resource entraTenantNamedValue 'Microsoft.ApiManagement/service/namedValues@2023
   properties: {
     displayName: 'entra-tenant-id'
     value: entraTenantId
+    secret: false
+  }
+}
+
+resource openIdConfigNamedValue 'Microsoft.ApiManagement/service/namedValues@2023-09-01-preview' = {
+  parent: apim
+  name: 'openid-config-url'
+  properties: {
+    displayName: 'openid-config-url'
+    value: openIdConfigUrl
+    secret: false
+  }
+}
+
+resource jwtIssuerNamedValue 'Microsoft.ApiManagement/service/namedValues@2023-09-01-preview' = {
+  parent: apim
+  name: 'jwt-issuer'
+  properties: {
+    displayName: 'jwt-issuer'
+    value: jwtIssuer
     secret: false
   }
 }
@@ -162,7 +188,8 @@ resource customerProductPolicy 'Microsoft.ApiManagement/service/products/policie
     value: loadTextContent('../policies/customer-product.xml')
   }
   dependsOn: [
-    entraTenantNamedValue
+    openIdConfigNamedValue
+    jwtIssuerNamedValue
     jwtAudienceNamedValue
     spaOriginNamedValue
   ]
@@ -176,7 +203,8 @@ resource adminProductPolicy 'Microsoft.ApiManagement/service/products/policies@2
     value: loadTextContent('../policies/admin-product.xml')
   }
   dependsOn: [
-    entraTenantNamedValue
+    openIdConfigNamedValue
+    jwtIssuerNamedValue
     jwtAudienceNamedValue
   ]
 }

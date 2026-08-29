@@ -37,8 +37,8 @@ param apimPublisherEmail string = 'noreply@example.com'
 @description('APIM publisher display name.')
 param apimPublisherName string = 'Coupon Demo'
 
-@description('Entra tenant id for JWT validation. Replace after app registration; not a secret.')
-param entraTenantId string = '00000000-0000-0000-0000-000000000000'
+@description('Entra tenant id for JWT validation. Defaults to the deployment tenant so APIM openid-config resolves.')
+param entraTenantId string = tenant().tenantId
 
 @description('Coupon Service API Application ID URI (JWT audience and MI token resource).')
 param couponApiAudience string = 'api://coupon-service'
@@ -47,8 +47,8 @@ param couponApiAudience string = 'api://coupon-service'
 param spaOrigin string = 'https://localhost:5173'
 
 // Derived from the deployment resource group so the template never bakes in an RG name (AC-9.1).
-// Trailing salt avoids global name collisions with soft-deleted APIM from earlier failed applies.
-var uniqueSuffix = '${uniqueString(resourceGroup().id)}cs27'
+// Salt bumped when soft-deleted globally unique names (Key Vault / APIM) block reuse under purge protection.
+var uniqueSuffix = '${uniqueString(resourceGroup().id)}cs28'
 
 var tags = {
   project: projectName
@@ -109,7 +109,10 @@ module acr 'modules/acr.bicep' = {
   }
 }
 
-var jwtAuthority = 'https://login.microsoftonline.com/${entraTenantId}/v2.0'
+// loginEndpoint includes a trailing slash (no-hardcoded-env-urls).
+var jwtAuthority = '${environment().authentication.loginEndpoint}${entraTenantId}/v2.0'
+var jwtIssuer = jwtAuthority
+var openIdConfigUrl = '${jwtAuthority}/.well-known/openid-configuration'
 var couponServiceScope = '${couponApiAudience}/.default'
 
 module containerapps 'modules/containerapps.bicep' = if (hostingMode == 'containerApps') {
@@ -178,6 +181,8 @@ module apimApi 'modules/apim-api.bicep' = {
     entraTenantId: entraTenantId
     couponApiAudience: couponApiAudience
     spaOrigin: spaOrigin
+    openIdConfigUrl: openIdConfigUrl
+    jwtIssuer: jwtIssuer
   }
 }
 

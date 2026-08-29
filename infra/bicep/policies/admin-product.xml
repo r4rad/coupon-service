@@ -6,12 +6,12 @@
   <inbound>
     <base />
     <validate-jwt header-name="Authorization" failed-validation-httpcode="401" failed-validation-error-message="Unauthorized" require-expiration-time="true" require-scheme="Bearer" output-token-variable-name="jwt">
-      <openid-config url="https://login.microsoftonline.com/{{entra-tenant-id}}/v2.0/.well-known/openid-configuration" />
+      <openid-config url="{{openid-config-url}}" />
       <audiences>
         <audience>{{jwt-audience}}</audience>
       </audiences>
       <issuers>
-        <issuer>https://login.microsoftonline.com/{{entra-tenant-id}}/v2.0</issuer>
+        <issuer>{{jwt-issuer}}</issuer>
       </issuers>
       <required-claims>
         <claim name="roles" match="any">
