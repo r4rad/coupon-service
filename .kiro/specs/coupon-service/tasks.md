@@ -68,8 +68,8 @@ Hour figures are focused-work estimates. `[D3]` means inside the committed 2–3
 
 ## Wave 6 — Cosmos adapter (depends: Wave 3) · 4 h `[D3 code] [POST verified]`
 
-- [ ] 6.1 Cosmos repositories, three containers, `/pk` convention, unique key on `/orderId`, TTL _(P-3, P-10)_ (1.5 h)
-- [ ] 6.2 Transactional-batch reserve with ETag precondition and jittered retry _(AC-4.5)_ (1 h)
+- [x] 6.1 Cosmos repositories, three containers, `/pk` convention, unique key on `/orderId`, TTL _(P-3, P-10)_ (1.5 h)
+- [x] 6.2 Transactional-batch reserve with ETag precondition and jittered retry _(AC-4.5)_ (1 h)
 - [ ] 6.3 `docker compose` emulator plus integration tests, skipping cleanly when unavailable _(AC-10.6, P-9)_ (1.5 h)
 
 ## Wave 7 — Infrastructure and pipeline, authored (depends: Wave 4) · 6 h `[D3 code] [POST run]`
