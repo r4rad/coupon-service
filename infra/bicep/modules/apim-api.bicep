@@ -69,7 +69,6 @@ resource customerProduct 'Microsoft.ApiManagement/service/products@2023-09-01-pr
     displayName: 'Customer'
     description: 'Customer-facing coupon preview and order submit'
     subscriptionRequired: false
-    approvalRequired: false
     state: 'published'
   }
 }
@@ -80,7 +79,7 @@ resource adminProduct 'Microsoft.ApiManagement/service/products@2023-09-01-previ
   properties: {
     displayName: 'Admin'
     description: 'Campaign-manager policy administration'
-    subscriptionRequired: false
+    subscriptionRequired: true
     approvalRequired: false
     state: 'published'
   }
