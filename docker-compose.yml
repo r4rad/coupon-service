@@ -28,5 +28,7 @@ services:
     ports:
       - "8081:8081"   # Cosmos gateway
       - "8080:8080"   # Liveness / readiness (/alive, /ready)
-      - "1234:1234"   # Data Explorer
+      # Data Explorer is :1234 inside the container. Do not publish it by default —
+      # on Windows that host port is often reserved (Hyper-V exclusions) and blocks compose up.
+      # Optional: - "1235:1234"
     mem_limit: 3g
