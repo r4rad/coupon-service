@@ -6,7 +6,7 @@ Add coupon support to a pizza ordering platform. A standalone Coupon Service val
 
 Design of record: [docs/solution-architecture.md](../../../docs/solution-architecture.md). Planning deltas: [design.md](design.md).
 
-**Delivery constraint.** The committed deadline is 2–3 days (hard). The Azure subscription has not arrived. Requirements below are therefore split into `[D3]` — must be satisfied and verifiable within the three days — and `[POST]` — satisfied after Azure access lands. A `[POST]` requirement still has code committed inside the three days; what it lacks is a green run against real Azure.
+**Delivery constraint.** The committed deadline was 2–3 days (hard). Requirements are split into `[D3]` — satisfied and verifiable without a live Azure subscription — and `[POST]` — need a green run against real Azure. A demo subscription and resource group (`rg-coupon-demo`) now exist; `[POST]` work is ticketed as **CS-27 through CS-30**. CI and CD are **Azure Pipelines only** (CS-26, CS-29) — there is no GitHub Actions workflow in this delivery.
 
 ---
 

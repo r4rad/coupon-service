@@ -6,7 +6,7 @@
 | **Size** | L |
 | **Labels** | `wave-5, area:test, size:L` |
 | **Blocked by** | [CS-21](CS-21-api-contract-test-suite.md) |
-| **Blocks** | [CS-26](CS-26-azure-pipelines-definition-seeding-and-template.md) |
+| **Blocks** | [CS-26](CS-26-azure-pipelines-ci-and-cd-definition-with-seeding.md) |
 
 > **Read [`AGENTS.md`](../../AGENTS.md) before starting.** It carries the standing rules —
 > money as `decimal`, engine purity, determinism via `IClock`, scope discipline, the definition

@@ -9,7 +9,7 @@ A **Coupon Service** for a pizza ordering platform: a policy engine that treats 
 Authoritative documents, in precedence order:
 
 1. `.kiro/specs/coupon-service/requirements.md` — numbered acceptance criteria (`AC-x.y`). **These define done.**
-2. `.kiro/specs/coupon-service/design.md` — planning decisions (`P-1`…`P-12`) and exact type signatures. Where this contradicts the architecture document, **this wins**.
+2. `.kiro/specs/coupon-service/design.md` — planning decisions (`P-1`…`P-13`) and exact type signatures. Where this contradicts the architecture document, **this wins**.
 3. `docs/solution-architecture.md` — the full architecture and the reasoning behind it.
 4. `.kiro/specs/coupon-service/tasks.md` — the task breakdown these tickets came from.
 

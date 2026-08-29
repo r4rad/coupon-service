@@ -1,6 +1,6 @@
 ﻿# Ticket index
 
-26 tickets. Standing rules for every one of them live in
+30 tickets. Standing rules for every one of them live in
 [`AGENTS.md`](../../AGENTS.md); the acceptance criteria they reference live in
 [`.kiro/specs/coupon-service/requirements.md`](../../.kiro/specs/coupon-service/requirements.md).
 
@@ -34,7 +34,11 @@ a fresh Cursor chat in this repository. There is nothing to install and no wrapp
 | [CS-23](CS-23-cosmos-db-adapter-with-transactional-reservation.md) | Cosmos DB adapter with transactional reservation | 6 | L | CS-13, CS-14 |
 | [CS-24](CS-24-cosmos-emulator-integration-tests.md) | Cosmos emulator integration tests | 6 | M | CS-23 |
 | [CS-25](CS-25-bicep-modules-for-the-whole-environment.md) | Bicep modules for the whole environment | 7 | L | CS-01 |
-| [CS-26](CS-26-azure-pipelines-definition-seeding-and-template.md) | Azure Pipelines definition, seeding and template linting | 7 | L | CS-22, CS-25 |
+| [CS-26](CS-26-azure-pipelines-ci-and-cd-definition-with-seeding.md) | Azure Pipelines CI and CD definition with seeding | 7 | L | CS-22, CS-25 |
+| [CS-27](CS-27-first-bicep-provision-into-rg-coupon-demo.md) | First Bicep provision into rg-coupon-demo | 8 | L | CS-25 |
+| [CS-28](CS-28-entra-apps-apim-jwt-policies-and-managed-identity.md) | Entra apps, APIM JWT policies and managed identity hop | 8 | L | CS-27 |
+| [CS-29](CS-29-wire-azure-pipelines-cd-and-prove-a-green-full-run.md) | Wire Azure Pipelines CD and prove a green full run | 8 | L | CS-26, CS-28 |
+| [CS-30](CS-30-deployment-and-authentication-docs-plus-p-12.md) | Deployment and authentication docs plus P-12 correction | 8 | M | CS-29 |
 
 ## Execution order
 
@@ -45,8 +49,8 @@ at the same time in separate chats. A batch cannot start until the batch above i
 |---|---|---|
 | 1 | CS-01 | one chat |
 | 2 | CS-02, CS-03, CS-25 | 3 chats in parallel |
-| 3 | CS-04, CS-05 | 2 chats in parallel |
-| 4 | CS-06, CS-07 | 2 chats in parallel |
+| 3 | CS-04, CS-05, CS-27 | 3 chats in parallel |
+| 4 | CS-06, CS-07, CS-28 | 3 chats in parallel |
 | 5 | CS-08, CS-09 | 2 chats in parallel |
 | 6 | CS-10, CS-12 | 2 chats in parallel |
 | 7 | CS-11, CS-13, CS-14 | 3 chats in parallel |
@@ -57,15 +61,36 @@ at the same time in separate chats. A batch cannot start until the batch above i
 | 12 | CS-21 | one chat |
 | 13 | CS-22 | one chat |
 | 14 | CS-26 | one chat |
+| 15 | CS-29 | one chat |
+| 16 | CS-30 | one chat |
 
 Running a batch in parallel means separate chats, not one chat given several prompts. Two
 agents editing the same working tree will collide; give each its own worktree or branch.
 
+## CI and CD
+
+**Azure Pipelines only.** There is no GitHub Actions workflow in this delivery. PR builds and
+the eight-stage deploy path both live in `azure-pipelines.yml` (CS-26), run on Azure DevOps.
+
+## Remaining path (Wave 7+)
+
+After CS-01 through CS-24 are merged, work this sequence. CS-25 and CS-26 can start in
+parallel once their dependencies are met; CS-27 needs CS-25 merged; CS-28 needs CS-27;
+CS-29 needs CS-26 and CS-28; CS-30 needs CS-29.
+
+| Ticket | Title | Blocked by |
+|---|---|---|
+| [CS-25](CS-25-bicep-modules-for-the-whole-environment.md) | Bicep modules for the whole environment | CS-01 |
+| [CS-26](CS-26-azure-pipelines-ci-and-cd-definition-with-seeding.md) | Azure Pipelines CI and CD definition with seeding | CS-22, CS-25 |
+| [CS-27](CS-27-first-bicep-provision-into-rg-coupon-demo.md) | First Bicep provision into rg-coupon-demo | CS-25 |
+| [CS-28](CS-28-entra-apps-apim-jwt-policies-and-managed-identity.md) | Entra apps, APIM JWT policies and managed identity hop | CS-27 |
+| [CS-29](CS-29-wire-azure-pipelines-cd-and-prove-a-green-full-run.md) | Wire Azure Pipelines CD and prove a green full run | CS-26, CS-28 |
+| [CS-30](CS-30-deployment-and-authentication-docs-plus-p-12.md) | Deployment and authentication docs plus P-12 correction | CS-29 |
+
 ## Blocked on Azure
 
-CS-25, CS-26 are authored and linted but cannot be deployed until a subscription
-exists. Their specifications say so explicitly, and instruct the agent never to report a
-deployment that did not happen.
+None. Live provision and CD proof are CS-27 through CS-29; they assume a subscription and
+`rg-coupon-demo` already exist.
 
 ## Regenerating
 

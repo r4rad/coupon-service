@@ -19,6 +19,7 @@
     ./scripts/gh-bootstrap.ps1 -Visibility public -DryRun
     ./scripts/gh-bootstrap.ps1 -Visibility public
     ./scripts/gh-bootstrap.ps1 -AzureDevOpsRemote https://dev.azure.com/org/proj/_git/coupon-service
+    ./scripts/gh-bootstrap.ps1 -SkipProject -Ids CS-25,CS-26,CS-27,CS-28,CS-29,CS-30
 #>
 [CmdletBinding()]
 param(
@@ -29,6 +30,9 @@ param(
     [string]   $AzureDevOpsRemote,
     [switch]   $SkipRepoCreate,
     [switch]   $SkipProject,
+    # Only create or refresh these ticket ids. Existing map entries get title/body/labels
+    # updated; missing ids are created. All other issues are left untouched.
+    [string[]] $Ids,
     [switch]   $DryRun
 )
 
@@ -36,6 +40,15 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $ticketFile = Join-Path $repoRoot '.github/tickets.json'
 $mapFile = Join-Path $repoRoot '.github/ticket-map.json'
+
+# Narrow runs must not recreate the repo or re-push remotes.
+if ($Ids -and $Ids.Count -gt 0) {
+    $SkipRepoCreate = $true
+    if ($AzureDevOpsRemote) {
+        Write-Warning '-Ids was set; ignoring -AzureDevOpsRemote for this run.'
+        $AzureDevOpsRemote = $null
+    }
+}
 
 function Write-Step { param([string]$Message) Write-Host "`n=== $Message" -ForegroundColor Cyan }
 function Write-Info { param([string]$Message) Write-Host "    $Message" -ForegroundColor DarkGray }
@@ -199,6 +212,23 @@ while ($remaining.Count -gt 0) {
 }
 Write-Info ((($ordered | ForEach-Object { $_.id }) -join ' -> '))
 
+# Optional: only create or refresh a named subset (e.g. after reshaping Wave 7/8).
+$idFilter = $null
+if ($Ids -and $Ids.Count -gt 0) {
+    $idFilter = @{}
+    foreach ($raw in $Ids) {
+        foreach ($piece in ($raw -split '[,;\s]+')) {
+            if ($piece) { $idFilter[$piece.Trim().ToUpperInvariant()] = $true }
+        }
+    }
+    $unknown = @($idFilter.Keys | Where-Object { $spec.tickets.id -notcontains $_ } | Sort-Object)
+    if ($unknown.Count -gt 0) {
+        throw "Unknown ticket id(s): $($unknown -join ', '). Check .github/tickets.json."
+    }
+    $ordered = @($ordered | Where-Object { $idFilter.ContainsKey($_.id) })
+    Write-Info "filtering to $($ordered.Count) ticket(s): $(($ordered | ForEach-Object { $_.id }) -join ', ')"
+}
+
 # --- Issues -------------------------------------------------------------------
 Write-Step 'Issues'
 
@@ -246,29 +276,42 @@ function New-IssueBody {
 }
 
 foreach ($ticket in $ordered) {
-    if ($map.ContainsKey($ticket.id)) {
-        Write-Info "$($ticket.id) already created as #$($map[$ticket.id]), skipping"
-        continue
-    }
-
     $body = New-IssueBody -Ticket $ticket -Map $map -Files $ticketFiles -RepoSlug $slug
     $tmp = [System.IO.Path]::GetTempFileName()
     Set-Content -Path $tmp -Value $body -Encoding UTF8
 
     $labels = @($ticket.labels) + @("size:$($ticket.size)")
-    $ghArgs = @(
-        'issue', 'create',
-        '--repo', $slug,
-        '--title', "$($ticket.id): $($ticket.title)",
-        '--body-file', $tmp
-    )
-    foreach ($l in $labels) { $ghArgs += @('--label', $l) }
+    $title = "$($ticket.id): $($ticket.title)"
 
     try {
+        if ($map.ContainsKey($ticket.id) -and $map[$ticket.id] -gt 0) {
+            $number = $map[$ticket.id]
+            Write-Info "$($ticket.id) already exists as #$number — refreshing title, body and labels"
+            $editArgs = @(
+                'issue', 'edit', "$number",
+                '--repo', $slug,
+                '--title', $title,
+                '--body-file', $tmp
+            )
+            foreach ($l in $labels) { $editArgs += @('--add-label', $l) }
+            Invoke-Gh -Arguments $editArgs | Out-Null
+            if ($DryRun) { Write-Info "$($ticket.id) (dry-run refresh #$number)" }
+            else { Write-Info "$($ticket.id) refreshed #$number" }
+            continue
+        }
+
+        $ghArgs = @(
+            'issue', 'create',
+            '--repo', $slug,
+            '--title', $title,
+            '--body-file', $tmp
+        )
+        foreach ($l in $labels) { $ghArgs += @('--label', $l) }
+
         $url = (Invoke-Gh -Arguments $ghArgs).Trim()
         if ($DryRun) {
             $map[$ticket.id] = 0
-            Write-Info "$($ticket.id) (dry run)"
+            Write-Info "$($ticket.id) (dry run create)"
         }
         else {
             $number = ($url -split '/')[-1]
@@ -330,10 +373,20 @@ Write-Host ''
 Write-Host "  Repository : https://github.com/$slug" -ForegroundColor Green
 Write-Host "  Issues     : https://github.com/$slug/issues" -ForegroundColor Green
 Write-Host ''
-Write-Host '  To start the first ticket, open its specification, copy the Prompt block, and paste it' -ForegroundColor Green
-Write-Host '  into a fresh Cursor chat in this repository:' -ForegroundColor Green
-Write-Host "      .github/tickets/$($ticketFiles['CS-01'])" -ForegroundColor Green
-Write-Host '  Batch order for the rest: .github/tickets/INDEX.md' -ForegroundColor Green
+if ($idFilter) {
+    Write-Host '  Synced:' -ForegroundColor Green
+    foreach ($t in $ordered) {
+        $n = if ($map.ContainsKey($t.id) -and $map[$t.id] -gt 0) { "#$($map[$t.id])" } else { '(new)' }
+        Write-Host "      $($t.id) $n — $($t.title)" -ForegroundColor Green
+    }
+    Write-Host '  Start next: .github/tickets/CS-25-bicep-modules-for-the-whole-environment.md' -ForegroundColor Green
+}
+else {
+    Write-Host '  To start the first ticket, open its specification, copy the Prompt block, and paste it' -ForegroundColor Green
+    Write-Host '  into a fresh Cursor chat in this repository:' -ForegroundColor Green
+    Write-Host "      .github/tickets/$($ticketFiles['CS-01'])" -ForegroundColor Green
+    Write-Host '  Batch order for the rest: .github/tickets/INDEX.md' -ForegroundColor Green
+}
 Write-Host ''
 
 exit 0
