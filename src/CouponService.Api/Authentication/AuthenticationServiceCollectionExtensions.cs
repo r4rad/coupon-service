@@ -42,12 +42,14 @@ internal static class AuthenticationServiceCollectionExtensions
             {
                 jwtOptions.Authority = authOptions.Jwt.Authority;
                 jwtOptions.Audience = authOptions.Jwt.Audience;
+                // Entra app roles arrive in the "roles" claim; map them for RequireRole (AC-7.3 / AC-7.4 / AC-7.7).
                 jwtOptions.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
                     ValidIssuer = authOptions.Jwt.Issuer,
                     ValidateAudience = true,
                     ValidAudience = authOptions.Jwt.Audience,
+                    RoleClaimType = "roles",
                 };
             });
 
