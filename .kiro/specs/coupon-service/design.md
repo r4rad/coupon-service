@@ -2,7 +2,9 @@
 
 ## Overview
 
-The full architecture is already written and reviewed: **[docs/solution-architecture.md](../../../docs/solution-architecture.md) is the design of record** — component structure, the policy engine, redemption lifecycle, data model, security, scalability, infrastructure, pipeline and ADRs all live there. This document does not restate it. It records the **twelve decisions taken during implementation planning** that either refine, correct or contradict it, plus the concrete type signatures and project layout so implementation is unambiguous.
+The full architecture is already written and reviewed: **[docs/solution-architecture.md](../../../docs/solution-architecture.md) is the design of record** — component structure, the policy engine, redemption lifecycle, data model, security, scalability, infrastructure, pipeline and ADRs all live there. This document does not restate it. It records the **decisions taken during implementation planning** that either refine, correct or contradict it, plus the concrete type signatures and project layout so implementation is unambiguous.
+
+Executable delivery tickets live in `.github/tickets/` (generated from `.github/tickets.json`). Wave 7 is **CS-25** (Bicep) and **CS-26** (Azure Pipelines CI/CD + seed). Wave 8 is **CS-27** (first provision), **CS-28** (Entra/APIM/MI), **CS-29** (green CD run), **CS-30** (docs + P-12).
 
 ---
 
@@ -10,7 +12,7 @@ The full architecture is already written and reviewed: **[docs/solution-architec
 
 | # | Decision | Why | Effect on the design of record |
 |---|---|---|---|
-| P-1 | Deliver phases 0–4 locally to depth; author infrastructure and pipeline but leave them unrun until Azure access arrives | Deadline is 2–3 days and hard; the subscription has not been provided | Section 24 waves stand, but waves 4–6 are code-complete rather than proven |
+| P-1 | Deliver phases 0–4 locally to depth; author infrastructure and pipeline as CS-25/CS-26, then prove them on Azure as CS-27–CS-30 | Deadline was hard; subscription arrived after Waves 0–6 | Section 24 waves stand; Wave 8 is executable tickets, not only checkboxes |
 | P-2 | Implement the **entire** effect grammar, including `cheapestFree`, `nthItem` and `tiered` | Each is one handler behind `IEffectHandler` and costs 40–60 lines once the compiler exists; deferring them saves little and weakens the central claim | Removes the phasing escape hatch in the risk register |
 | P-3 | Partition key becomes an explicit `/pk` field rather than `/code` | Automatic policies have no code; overloading `/code` with a sentinel is confusing and blocks a null-safe schema | Section 11 said `pk = /code`. Now `pk = /pk`, where `pk` = `code` for coded policies and `AUTO#{policyId}` for automatic ones |
 | P-4 | Automatic policies are discovered through a cached index, refreshed by a filtered query with a 60-second TTL | There is no key to point-read by when the customer supplies no code | New component, `IAutomaticPolicyIndex`. Consequence: activating an automatic promotion takes effect within a minute |
@@ -22,6 +24,7 @@ The full architecture is already written and reviewed: **[docs/solution-architec
 | P-10 | The Order API persists to a third Cosmos container, `orders`, partitioned by `/orderId` | In-memory orders disappear when a scale-to-zero replica recycles, which reads as a bug in a demo | Section 11 showed two containers; there are three |
 | P-11 | Container Apps are provisioned with a public placeholder image, then the pipeline updates the revision with the built image | Resolves the registry chicken-and-egg on a first deploy into an empty resource group | Makes the section 18 stage order workable |
 | P-12 | **Correction:** drop the APIM response-cache optimisation | The Consumption tier has no internal cache; `cache-lookup` there requires an external Redis we do not provision | Section 14 of the design of record must be edited; rely on Static Web Apps CDN plus backend `ETag` and `Cache-Control` |
+| P-13 | **CI and CD are Azure Pipelines only** — one `azure-pipelines.yml` for PR CI (build, test, bicep lint) and eight-stage CD; no GitHub Actions | The brief requires Azure DevOps; a second CI system splits gates and drifts | Section 18; tickets CS-26 and CS-29; `docs/pipeline-prerequisites.md` lists the three one-time manual steps |
 
 ---
 
@@ -43,12 +46,12 @@ tests/
   CouponService.ApiTests/        # WebApplicationFactory contract tests
   CouponService.IntegrationTests/# Cosmos emulator only
   CouponService.Bdd/             # Reqnroll, configurable base URL
-infra/bicep/                     # Delivery IaC
-infra/terraform/                 # Documented alternative, not wired to CI
+infra/bicep/                     # Delivery IaC (CS-25); first live apply is CS-27
+infra/terraform/                 # Documented alternative, not wired to the pipeline
 data/                            # pizzas.json, policies.seed.json
-azure-pipelines.yml
+azure-pipelines.yml              # Sole CI and CD definition (CS-26, CS-29) — no GitHub Actions
+docs/pipeline-prerequisites.md   # Three one-time ADO/WIF steps; nothing else is manual
 ```
-
 `CouponService.Engine` references only `CouponService.Domain`. It has no Azure, ASP.NET or Cosmos dependency — that is what makes AC-10.5 achievable and is enforced by a project-reference test.
 
 ---

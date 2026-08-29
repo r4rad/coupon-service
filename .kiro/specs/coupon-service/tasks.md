@@ -72,25 +72,23 @@ Hour figures are focused-work estimates. `[D3]` means inside the committed 2–3
 - [x] 6.2 Transactional-batch reserve with ETag precondition and jittered retry _(AC-4.5)_ (1 h)
 - [x] 6.3 `docker compose` emulator plus integration tests, skipping cleanly when unavailable _(AC-10.6, P-9)_ (1.5 h)
 
-## Wave 7 — Infrastructure and pipeline, authored (depends: Wave 4) · 6 h `[D3 code] [POST run]`
+## Wave 7 — Infrastructure and pipeline, authored (depends: Wave 4) · 6 h · tickets CS-25, CS-26
 
-- [x] 7.1 Bicep modules: observability, identity, key vault, cosmos, container apps, apim, apim-api, static web app (2.5 h)
-- [x] 7.2 `main.bicep`, demo parameters, placeholder-image pattern _(P-11)_ (1 h)
-- [ ] 7.3 `bicep build` and lint wired into the build stage so the templates are verified without a subscription _(AC-9.2)_ (0.5 h)
-- [ ] 7.4 `azure-pipelines.yml`, eight stages with gates _(AC-9.1, AC-9.3, AC-9.4)_ (1.5 h)
-- [ ] 7.5 Idempotent seeding script over the admin API _(AC-9.5, AC-9.6)_ (0.5 h)
+- [x] 7.1 Bicep modules: observability, identity, key vault, cosmos, ACR, container apps, apim, apim-api, static web app _(CS-25)_ (2.5 h)
+- [x] 7.2 `main.bicep`, demo parameters, placeholder-image pattern _(P-11, CS-25)_ (1 h)
+- [ ] 7.3 `bicep build` and lint verified locally and as Azure Pipelines CI stages _(AC-9.2, CS-25, CS-26)_ (0.5 h)
+- [ ] 7.4 `azure-pipelines.yml` only: PR CI (build/test/bicep) and eight-stage CD with gates — **no GitHub Actions** _(AC-9.1, AC-9.3, AC-9.4, CS-26)_ (1.5 h)
+- [ ] 7.5 Idempotent seeding script over the admin API _(AC-9.5, AC-9.6, CS-26)_ (0.5 h)
 
-## Wave 8 — After Azure access `[POST]`
+## Wave 8 — Live Azure verification `[POST]` · tickets CS-27 … CS-30
 
-- [ ] 8.1 Provision into an empty resource group and iterate to a green deployment _(AC-9.1)_
-- [ ] 8.2 APIM products, policies, JWT validation and rate limiting _(AC-9.7, AC-7.6)_
-- [ ] 8.3 Managed identity and app roles for the internal hop _(AC-7.7)_
-- [ ] 8.4 Switch the BDD suite to client credentials and run it through APIM
-- [ ] 8.5 `simulate` endpoint and shadow-mode evaluation _(AC-6.5, AC-6.6)_
-- [ ] 8.6 Alerts, workbook, request-charge logging _(AC-8.5, NFR-2)_
-- [ ] 8.7 Correct the APIM cache claim in the design of record _(P-12)_
-- [ ] 8.8 `docs/deployment.md`, `docs/authentication.md`, assumptions write-up
-- [ ] 8.9 React SPA, only if everything above is comfortable
+- [ ] 8.1 Provision into `rg-coupon-demo` with what-if then create; iterate to green _(AC-9.1, AC-9.2, NFR-6, CS-27)_
+- [ ] 8.2 APIM products, policies, JWT validation and rate limiting _(AC-9.7, AC-7.6, CS-28)_
+- [ ] 8.3 Managed identity and app roles for the internal hop _(AC-7.7, CS-28)_
+- [ ] 8.4 Wire Azure Pipelines CD (WIF service connection) and obtain one green eight-stage run including BDD through APIM _(AC-9.3–9.6, AC-10.1, CS-29)_
+- [ ] 8.5 `docs/deployment.md`, `docs/authentication.md`, assumptions write-up _(CS-30)_
+- [ ] 8.6 Correct the APIM cache claim in the design of record _(P-12, CS-30)_
+- [ ] 8.7 Deferred (not ticketed): `simulate` / shadow _(AC-6.5, AC-6.6)_, alerts/workbook _(AC-8.5)_, React SPA
 
 ---
 
