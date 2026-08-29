@@ -82,7 +82,7 @@ Hour figures are focused-work estimates. `[D3]` means inside the committed 2–3
 
 ## Wave 8 — Live Azure verification `[POST]` · tickets CS-27 … CS-30
 
-- [ ] 8.1 Provision into `rg-coupon-demo` with what-if then create; iterate to green _(AC-9.1, AC-9.2, NFR-6, CS-27)_
+- [x] 8.1 Provision into `rg-coupon-demo` with what-if then create; iterate to green _(AC-9.1, AC-9.2, NFR-6, CS-27)_
 - [ ] 8.2 APIM products, policies, JWT validation and rate limiting _(AC-9.7, AC-7.6, CS-28)_
 - [ ] 8.3 Managed identity and app roles for the internal hop _(AC-7.7, CS-28)_
 - [ ] 8.4 Wire Azure Pipelines CD (WIF service connection) and obtain one green eight-stage run including BDD through APIM _(AC-9.3–9.6, AC-10.1, CS-29)_
