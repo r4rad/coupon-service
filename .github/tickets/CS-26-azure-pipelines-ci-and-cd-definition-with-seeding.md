@@ -6,7 +6,7 @@
 | **Size** | L |
 | **Labels** | `wave-7, area:infra, size:L` |
 | **Blocked by** | [CS-22](CS-22-reqnroll-bdd-suite-with-a-configurable-target.md), [CS-25](CS-25-bicep-modules-for-the-whole-environment.md) |
-| **Blocks** | [CS-29](CS-29-wire-azure-pipelines-cd-and-prove-a-green-full-run.md) |
+| **Blocks** | [CS-29](CS-29-multi-stage-pipelines-cd-develop-then-main.md) |
 
 > **Read [`AGENTS.md`](../../AGENTS.md) before starting.** It carries the standing rules —
 > money as `decimal`, engine purity, determinism via `IClock`, scope discipline, the definition
@@ -14,7 +14,7 @@
 
 ## Goal
 
-Define a single Azure Pipelines YAML that is both CI and CD: PR builds run build, test and bicep lint; main runs the full eight-stage deploy path. No GitHub Actions.
+Define a single Azure Pipelines YAML that is both CI and CD (P-13/P-14). Author the eight-stage skeleton and seed script; CS-29 finishes multi-branch wiring and the green live runs. No GitHub Actions.
 
 ## Blocked by
 
@@ -34,7 +34,7 @@ pull request under a heading `Out-of-scope changes`.
 ## Out of scope
 
 - Creating the Azure DevOps project or service connection (one-time manual steps documented in docs/pipeline-prerequisites.md).
-- A green full CD run against the live subscription. That is CS-29.
+- A green full CD run against the live subscription, dual-environment params, and branch-to-RG mapping. That is CS-29.
 - Any GitHub Actions workflow. Azure Pipelines is the only CI and CD system.
 
 ## Acceptance criteria
@@ -54,12 +54,11 @@ Each one needs a test that would fail without this change.
 ## Implementation notes
 
 - Single azure-pipelines.yml with eight stages matching section 18: build, test, package, provision, deploy, seed, BDD, verify.
-- PR trigger (CI): run only build, test, and bicep build/lint. Fail the run if tests fail. Do not provision or deploy on PRs.
-- Main or manual trigger (CD): run all eight stages. Test failure must stop the pipeline before provision or deploy (AC-9.4).
-- Authenticate with a workload-identity federated Azure Resource Manager service connection. No client secret in the YAML or variable group (AC-9.3).
-- Provision stage: publish az deployment group what-if as a pipeline artifact, then apply. Parameters reference the existing resource group (rg-coupon-demo) and subscription via pipeline variables â€” never hard-code secrets.
+- Target branch model (P-14): PR into develop or main = CI only (build, test, bicep build/lint). Merge to develop or main (or Manual) = full CD. Do not provision or deploy on PRs.
+- Auth: workload-identity federated ARM service connection only. No client secret in YAML or variable group (AC-9.3).
+- Provision stage: publish az deployment group what-if as a pipeline artifact, then apply. Resource group and param file come from pipeline variables/parameters - never hard-code secrets or subscription IDs.
 - Idempotent scripts/seed-policies.ps1 through the admin API for the deterministic policy set, safe to re-run (AC-9.5, AC-9.6).
-- Document the three one-time manual prerequisites in docs/pipeline-prerequisites.md: Azure DevOps project, WIF service connection scoped to the subscription or rg-coupon-demo, and Entra app registration permission. Confirm nothing else is manual.
+- Document one-time prerequisites in docs/pipeline-prerequisites.md: private Azure DevOps project, WIF connection, Entra permission, User Access Administrator on target RGs (Key Vault RBAC assignments), and soft-delete / name-salt notes. Confirm nothing else is manual after that.
 
 ## Verification
 

@@ -1,4 +1,4 @@
-﻿# CS-29: Wire Azure Pipelines CD and prove a green full run
+﻿# CS-29: Multi-stage Pipelines CD (develop then main) and green runs
 
 | | |
 |---|---|
@@ -14,7 +14,7 @@
 
 ## Goal
 
-Connect azure-pipelines.yml to Azure DevOps with a WIF service connection and obtain one green eight-stage run: provision, deploy, seed, BDD through APIM, verify.
+Finish azure-pipelines.yml and Bicep for P-14 branching: PR CI into develop/main, CD on develop to non-prod, CD on main to production. Obtain green eight-stage runs and fix live provision blockers (RBAC, Key Vault global names).
 
 ## Blocked by
 
@@ -24,8 +24,10 @@ Connect azure-pipelines.yml to Azure DevOps with a WIF service connection and ob
 ## Scope — touch only these paths
 
 - `azure-pipelines.yml`
+- `infra/bicep/`
 - `scripts/seed-policies.ps1`
 - `tests/CouponService.Bdd/`
+- `tests/CouponService.UnitTests/`
 - `docs/pipeline-prerequisites.md`
 - `docs/deployment.md`
 
@@ -35,9 +37,10 @@ pull request under a heading `Out-of-scope changes`.
 
 ## Out of scope
 
-- Authoring Bicep from scratch (CS-25) or first manual provision (CS-27).
+- Authoring Bicep modules from scratch (CS-25) or Entra/APIM product design (CS-28).
 - GitHub Actions. Do not add any.
 - simulate, shadow, alerts workbook, React SPA.
+- Creating Azure DevOps org/project in code - document only; operator runs the listed CLI/portal steps.
 
 ## Acceptance criteria
 
@@ -55,12 +58,14 @@ Each one needs a test that would fail without this change.
 
 ## Implementation notes
 
-- Complete the documented one-time prerequisites if not already done: public or suitably licensed Azure DevOps project, WIF service connection to the subscription or rg-coupon-demo, pipeline pointing at azure-pipelines.yml.
-- Set pipeline variables for resource group, location, and service connection name. No secrets in the YAML file.
-- Run the full CD path on main or via manual run. If a stage fails, fix in atomic commits and re-run until green. Capture the run URL in the pull request.
-- Point the BDD suite at the APIM gateway base URL with the configured token strategy so the same features from CS-22 run through the gateway (AC-10.1).
-- Re-run the pipeline once to prove seed and provision are idempotent (AC-9.6).
-- Update docs/deployment.md with the observed stage order and how to trigger a run.
+- Branching (P-14): trigger and pr include develop and main. isCD true only for refs/heads/develop, refs/heads/main, or Manual - never for PullRequest. PR feature->develop and develop->main run Build+Test+bicep only.
+- Environments: develop CD uses environmentName=dev (or demo) and RG rg-coupon-demo (non-prod). main CD uses environmentName=prod and RG rg-coupon-prod. Add infra/bicep/main.dev.bicepparam and main.prod.bicepparam (no secrets). Map branch->RG+param file in YAML variables so an agent needs no manual override for the happy path.
+- Key Vault / APIM names: vault names use take(..., 24). A salt appended to uniqueSuffix is truncated and does NOT change the name (current failure: VaultAlreadyExists on kv-coupon-demo-r4hxkv774). Put any collision salt at the START of uniqueSuffix, e.g. take('v29${uniqueString(resourceGroup().id)}', 13). Add a unit/architecture test that the compiled vault naming expression changes when the salt changes. Do not rely on purge when enablePurgeProtection is true.
+- Prerequisites (document and assume operator completes): private ADO project; pipeline on azure-pipelines.yml; WIF connection coupon-demo-wif; Contributor AND User Access Administrator on both RGs for the WIF SP (roleAssignments/write for Key Vault Secrets User); create rg-coupon-prod in eastus2 if missing; pipeline location default and all env bicepparams use eastus2 for this subscription; GitHub develop protected with required PR.
+- Provision stage: what-if artifact then az deployment group create with the branch-selected param file. Fix any remaining template failures in atomic commits until green.
+- Point BDD at the environment APIM gateway URL (pipeline variable or provision output) so CS-22 features run through the gateway (AC-10.1). Seed remains idempotent (AC-9.5).
+- Prove: one green full CD on develop; re-run once for idempotency (AC-9.6). Optionally prove main->rg-coupon-prod when that RG exists. Capture run URLs in the pull request. Never invent a green run.
+- Update docs/pipeline-prerequisites.md and docs/deployment.md with the branch->env table, UAA requirement, and the leading-salt naming rule.
 
 ## Verification
 
@@ -69,6 +74,8 @@ All of these must pass, with zero warnings. Do not suppress an analyzer to get t
 ```powershell
 dotnet build CouponService.slnx
 dotnet test CouponService.slnx
+az bicep build --file infra/bicep/main.bicep --stdout
+az bicep lint --file infra/bicep/main.bicep
 ```
 
 ## Prompt
@@ -81,7 +88,7 @@ file the prompt names.
 Implement ticket CS-29 in this repository, end to end.
 
 Read these first, in order. They are the contract and they override anything you assume:
-  1. .github/tickets/CS-29-wire-azure-pipelines-cd-and-prove-a-green-full-run.md
+  1. .github/tickets/CS-29-multi-stage-pipelines-cd-develop-then-main.md
      This ticket: goal, scope, out of scope, acceptance criteria, implementation notes, verification.
   2. AGENTS.md
      Standing rules: money as decimal, engine purity, determinism via the injected IClock,
@@ -94,11 +101,13 @@ Read these first, in order. They are the contract and they override anything you
      where the two differ. Consult the architecture document for the reasoning behind a decision.
 
 Then:
-  1. Create branch ticket/CS-29-wire-azure-pipelines-cd-and-prove from the latest main.
+  1. Create branch ticket/CS-29-multi-stage-pipelines-cd-develop-then from the latest main.
   2. Implement the ticket, touching only these paths:
        azure-pipelines.yml
+       infra/bicep/
        scripts/seed-policies.ps1
        tests/CouponService.Bdd/
+       tests/CouponService.UnitTests/
        docs/pipeline-prerequisites.md
        docs/deployment.md
      Plus your own new test files, and the checkboxes in .kiro/specs/coupon-service/tasks.md.
@@ -108,6 +117,8 @@ Then:
   4. Verify. Every command must pass, with zero warnings:
        dotnet build CouponService.slnx
        dotnet test CouponService.slnx
+       az bicep build --file infra/bicep/main.bicep --stdout
+       az bicep lint --file infra/bicep/main.bicep
      Each acceptance criterion needs a test that fails without your change. Prove that by
      reverting the change mentally, or temporarily, and confirming the test goes red.
   5. Tick the matching checkboxes in .kiro/specs/coupon-service/tasks.md.
@@ -115,7 +126,7 @@ Then:
      building - with subjects of the form "CS-29: <imperative summary>". Do not squash the
      branch into a single commit; the granularity is what makes the pull request reviewable.
      Add no trailer of any kind: no Co-Authored-By, no Signed-off-by, no tool attribution.
-  7. Push the branch and open a pull request titled "CS-29: Wire Azure Pipelines CD and prove a green full run".
+  7. Push the branch and open a pull request titled "CS-29: Multi-stage Pipelines CD (develop then main) and green runs".
      In the body, list every acceptance criterion satisfied, anything deliberately deferred,
      and any out-of-scope change you had to make.
 

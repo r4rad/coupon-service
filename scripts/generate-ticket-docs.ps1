@@ -25,7 +25,7 @@ $ticketFile = Join-Path $repoRoot '.github/tickets.json'
 $outDir     = Join-Path $repoRoot '.github/tickets'
 
 if (-not (Test-Path $ticketFile)) { throw "Not found: $ticketFile" }
-$spec = Get-Content $ticketFile -Raw | ConvertFrom-Json
+$spec = Get-Content $ticketFile -Raw -Encoding UTF8 | ConvertFrom-Json
 
 if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
 

@@ -23,9 +23,9 @@ parameters:
     type: string
     default: coupon-demo-wif
   - name: location
-    displayName: Azure region
+    displayName: Azure region (this subscription: eastus2; westeurope is ineligible)
     type: string
-    default: westeurope
+    default: eastus2
 
 variables:
   DOTNET_NOLOGO: true

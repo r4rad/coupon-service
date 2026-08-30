@@ -37,7 +37,7 @@ a fresh Cursor chat in this repository. There is nothing to install and no wrapp
 | [CS-26](CS-26-azure-pipelines-ci-and-cd-definition-with-seeding.md) | Azure Pipelines CI and CD definition with seeding | 7 | L | CS-22, CS-25 |
 | [CS-27](CS-27-first-bicep-provision-into-rg-coupon-demo.md) | First Bicep provision into rg-coupon-demo | 8 | L | CS-25 |
 | [CS-28](CS-28-entra-apps-apim-jwt-policies-and-managed-identity.md) | Entra apps, APIM JWT policies and managed identity hop | 8 | L | CS-27 |
-| [CS-29](CS-29-wire-azure-pipelines-cd-and-prove-a-green-full-run.md) | Wire Azure Pipelines CD and prove a green full run | 8 | L | CS-26, CS-28 |
+| [CS-29](CS-29-multi-stage-pipelines-cd-develop-then-main.md) | Multi-stage Pipelines CD (develop then main) and green runs | 8 | L | CS-26, CS-28 |
 | [CS-30](CS-30-deployment-and-authentication-docs-plus-p-12.md) | Deployment and authentication docs plus P-12 correction | 8 | M | CS-29 |
 
 ## Execution order
@@ -84,7 +84,7 @@ CS-29 needs CS-26 and CS-28; CS-30 needs CS-29.
 | [CS-26](CS-26-azure-pipelines-ci-and-cd-definition-with-seeding.md) | Azure Pipelines CI and CD definition with seeding | CS-22, CS-25 |
 | [CS-27](CS-27-first-bicep-provision-into-rg-coupon-demo.md) | First Bicep provision into rg-coupon-demo | CS-25 |
 | [CS-28](CS-28-entra-apps-apim-jwt-policies-and-managed-identity.md) | Entra apps, APIM JWT policies and managed identity hop | CS-27 |
-| [CS-29](CS-29-wire-azure-pipelines-cd-and-prove-a-green-full-run.md) | Wire Azure Pipelines CD and prove a green full run | CS-26, CS-28 |
+| [CS-29](CS-29-multi-stage-pipelines-cd-develop-then-main.md) | Multi-stage Pipelines CD (develop then main) and green runs | CS-26, CS-28 |
 | [CS-30](CS-30-deployment-and-authentication-docs-plus-p-12.md) | Deployment and authentication docs plus P-12 correction | CS-29 |
 
 ## Blocked on Azure
