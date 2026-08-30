@@ -74,6 +74,8 @@ public sealed class AzurePipelinesTests
         Assert.Contains("refs/heads/develop", yaml, StringComparison.Ordinal);
         Assert.Contains("refs/heads/main", yaml, StringComparison.Ordinal);
         Assert.Contains("eq(variables['Build.Reason'], 'Manual')", yaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("${{ elseif", yaml, StringComparison.Ordinal);
+        Assert.Contains("$[iif(", yaml, StringComparison.Ordinal);
 
         foreach (var stage in new[] { "Package", "Provision", "Deploy", "Seed", "Bdd", "Verify" })
         {
