@@ -37,13 +37,17 @@ public sealed class LiveProvisionTests
             Assert.Contains("param staticWebAppLocation = 'eastus2'", envParams, StringComparison.Ordinal);
         }
 
-        // Both dev/demo and prod use App Service (F1) for consistency, avoiding the one-CAE-per-region
-        // subscription quota (MaxNumberOfRegionalEnvironmentsInSubExceeded) that a second CAE would trip.
-        // main.demo.bicepparam is the earlier CS-27 manual-apply file and intentionally keeps containerApps.
+        // Both dev and prod stay on Container Apps. The subscription allows one CAE per region
+        // (MaxNumberOfRegionalEnvironmentsInSubExceeded) and zero App Service VMs
+        // (SubscriptionIsOverQuotaForSku), so prod moves only its CAE to eastus via
+        // containerAppsLocation while every other prod resource stays in eastus2 with the RG.
         var devParams = Read(Path.Combine("infra", "bicep", "main.dev.bicepparam"));
         var prodParams = Read(Path.Combine("infra", "bicep", "main.prod.bicepparam"));
-        Assert.Contains("param hostingMode = 'appService'", devParams, StringComparison.Ordinal);
-        Assert.Contains("param hostingMode = 'appService'", prodParams, StringComparison.Ordinal);
+        Assert.Contains("param hostingMode = 'containerApps'", devParams, StringComparison.Ordinal);
+        Assert.Contains("param hostingMode = 'containerApps'", prodParams, StringComparison.Ordinal);
+        Assert.DoesNotContain("param containerAppsLocation", devParams, StringComparison.Ordinal);
+        Assert.Contains("param containerAppsLocation = 'eastus'", prodParams, StringComparison.Ordinal);
+        Assert.Contains("containerAppsLocation == '' ? location : containerAppsLocation", main, StringComparison.Ordinal);
     }
 
     [Fact]

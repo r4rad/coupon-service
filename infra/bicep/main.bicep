@@ -6,6 +6,9 @@ param location string = 'westeurope'
 @description('Static Web Apps Free SKU region. May differ from location when SWA is unavailable there.')
 param staticWebAppLocation string = 'westeurope'
 
+@description('Container Apps environment region. Empty inherits location. Override only when the subscription one-CAE-per-region quota forces the environment into a second region (CS-29).')
+param containerAppsLocation string = ''
+
 @description('Short environment label applied to names and the env tag.')
 param environmentName string = 'demo'
 
@@ -116,10 +119,12 @@ var jwtIssuer = jwtAuthority
 var openIdConfigUrl = '${jwtAuthority}/.well-known/openid-configuration'
 var couponServiceScope = '${couponApiAudience}/.default'
 
+var containerAppsRegion = containerAppsLocation == '' ? location : containerAppsLocation
+
 module containerapps 'modules/containerapps.bicep' = if (hostingMode == 'containerApps') {
   name: 'containerapps'
   params: {
-    location: location
+    location: containerAppsRegion
     environmentName: environmentName
     logAnalyticsWorkspaceName: observability.outputs.logAnalyticsName
     appInsightsConnectionString: observability.outputs.appInsightsConnectionString
