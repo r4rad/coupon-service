@@ -38,8 +38,10 @@ public sealed class LiveProvisionTests
         }
 
         // One CAE per region on this subscription — prod uses App Service F1 instead of a second CAE.
+        // Non-prod keeps environmentName=demo so Provision updates cae-coupon-demo instead of creating cae-coupon-dev.
         var devParams = Read(Path.Combine("infra", "bicep", "main.dev.bicepparam"));
         var prodParams = Read(Path.Combine("infra", "bicep", "main.prod.bicepparam"));
+        Assert.Contains("param environmentName = 'demo'", devParams, StringComparison.Ordinal);
         Assert.Contains("param hostingMode = 'containerApps'", devParams, StringComparison.Ordinal);
         Assert.Contains("param hostingMode = 'appService'", prodParams, StringComparison.Ordinal);
     }

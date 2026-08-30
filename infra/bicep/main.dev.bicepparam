@@ -2,7 +2,7 @@ using './main.bicep'
 
 param location = 'eastus2'
 param staticWebAppLocation = 'eastus2'
-param environmentName = 'dev'
+param environmentName = 'demo'
 param projectName = 'coupon-service'
 param ownerTag = 'coupon-demo'
 param hostingMode = 'containerApps'
