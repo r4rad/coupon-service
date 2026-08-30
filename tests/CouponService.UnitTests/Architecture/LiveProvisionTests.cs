@@ -36,6 +36,12 @@ public sealed class LiveProvisionTests
             Assert.Contains("param location = 'eastus2'", envParams, StringComparison.Ordinal);
             Assert.Contains("param staticWebAppLocation = 'eastus2'", envParams, StringComparison.Ordinal);
         }
+
+        // One CAE per region on this subscription — prod uses App Service F1 instead of a second CAE.
+        var devParams = Read(Path.Combine("infra", "bicep", "main.dev.bicepparam"));
+        var prodParams = Read(Path.Combine("infra", "bicep", "main.prod.bicepparam"));
+        Assert.Contains("param hostingMode = 'containerApps'", devParams, StringComparison.Ordinal);
+        Assert.Contains("param hostingMode = 'appService'", prodParams, StringComparison.Ordinal);
     }
 
     [Fact]

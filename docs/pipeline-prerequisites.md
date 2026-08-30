@@ -67,6 +67,10 @@ az group create --name rg-coupon-prod --location eastus2
 ```
 
 This subscription rejects `westeurope` for new resources (`RequestDisallowedByAzure` / locationineligible). Demo/dev/prod param files and the pipeline `location` default must be **`eastus2`** (see `docs/deployment.md`). Template defaults in `main.bicep` may still say `westeurope` for other subscriptions; the param file wins.
+
+### Container Apps environment quota
+
+This subscription allows **at most one** Container Apps managed environment per region (`MaxNumberOfRegionalEnvironmentsInSubExceeded`). Non-prod (`main.dev.bicepparam`) keeps `hostingMode = containerApps`. Production (`main.prod.bicepparam`) uses `hostingMode = appService` (F1) so both resource groups can live in `eastus2` without a second CAE.
 ## 4. Entra app registration permission
 
 Grant permission to create or configure the Entra app registrations the demo needs (JWT validation and managed-identity role assignment). Wave 8 (**CS-28**) applies those registrations; the operator who wired the service connection completes that Entra work when requested.
