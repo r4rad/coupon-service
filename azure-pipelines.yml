@@ -18,19 +18,19 @@ pr:
 
 parameters:
   - name: resourceGroupName
-    displayName: Resource group override (leave default to derive from branch)
+    displayName: Resource group override (auto = derive from branch)
     type: string
-    default: ''
+    default: auto
   - name: bicepParametersFile
-    displayName: Bicep param file override (leave default to derive from branch)
+    displayName: Bicep param file override (auto = derive from branch)
     type: string
-    default: ''
+    default: auto
   - name: azureServiceConnection
     displayName: Workload-identity federated Azure Resource Manager service connection
     type: string
     default: coupon-demo-wif
   - name: location
-    displayName: Azure region (this subscription: eastus2; westeurope is ineligible)
+    displayName: 'Azure region (this subscription: eastus2; westeurope is ineligible)'
     type: string
     default: eastus2
 
@@ -46,24 +46,15 @@ variables:
   # CD on develop/main merges and Manual. PullRequest never sets this path.
   - name: isCD
     value: $[or(eq(variables['Build.SourceBranch'], 'refs/heads/develop'), eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.Reason'], 'Manual'))]
-  - ${{ if ne(parameters.resourceGroupName, '') }}:
-    - name: resourceGroupName
-      value: ${{ parameters.resourceGroupName }}
-  - ${{ elseif eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
-    - name: resourceGroupName
-      value: rg-coupon-prod
-  - ${{ else }}:
-    - name: resourceGroupName
-      value: rg-coupon-demo
-  - ${{ if ne(parameters.bicepParametersFile, '') }}:
-    - name: bicepParametersFile
-      value: ${{ parameters.bicepParametersFile }}
-  - ${{ elseif eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
-    - name: bicepParametersFile
-      value: infra/bicep/main.prod.bicepparam
-  - ${{ else }}:
-    - name: bicepParametersFile
-      value: infra/bicep/main.dev.bicepparam
+  # Runtime mapping only — compile-time ${{ if }} on Build.SourceBranch breaks trigger YAML parse (informational runs).
+  - name: resourceGroupOverride
+    value: ${{ parameters.resourceGroupName }}
+  - name: bicepParametersOverride
+    value: ${{ parameters.bicepParametersFile }}
+  - name: resourceGroupName
+    value: $[iif(ne(variables['resourceGroupOverride'], 'auto'), variables['resourceGroupOverride'], iif(eq(variables['Build.SourceBranch'], 'refs/heads/main'), 'rg-coupon-prod', 'rg-coupon-demo'))]
+  - name: bicepParametersFile
+    value: $[iif(ne(variables['bicepParametersOverride'], 'auto'), variables['bicepParametersOverride'], iif(eq(variables['Build.SourceBranch'], 'refs/heads/main'), 'infra/bicep/main.prod.bicepparam', 'infra/bicep/main.dev.bicepparam'))]
 
 stages:
   # --- 1 BUILD ---
