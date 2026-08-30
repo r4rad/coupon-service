@@ -35,6 +35,44 @@ public sealed class AzurePipelinesTests
                 }));
 
     [Fact]
+    public void Deploy_builds_container_images_and_updates_apps_before_readiness()
+    {
+        // CS-29 / section 18 — Deploy replaces the P-11 placeholder with ACR-built images.
+        var yaml = ReadPipeline();
+        var deployStart = yaml.IndexOf("- stage: Deploy", StringComparison.Ordinal);
+        var deployEnd = yaml.IndexOf("- stage: Seed", StringComparison.Ordinal);
+        var block = yaml[deployStart..deployEnd];
+
+        Assert.Contains("docker build", block, StringComparison.Ordinal);
+        Assert.Contains("docker push", block, StringComparison.Ordinal);
+        Assert.Contains("az acr login", block, StringComparison.Ordinal);
+        Assert.Contains("src/CouponService.Api/Dockerfile", block, StringComparison.Ordinal);
+        Assert.Contains("src/OrderApi/Dockerfile", block, StringComparison.Ordinal);
+        Assert.Contains("az containerapp update", block, StringComparison.Ordinal);
+        Assert.Contains("/v1/health/ready", block, StringComparison.Ordinal);
+        Assert.Contains("azureSubscription: $(azureServiceConnection)", block, StringComparison.Ordinal);
+        Assert.DoesNotContain("az acr build", block, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Bdd_stage_runs_reqnroll_through_the_apim_gateway_urls()
+    {
+        // AC-10.1 / CS-29 — post-deploy BDD targets APIM /coupons and /orders, not only in-process hosts.
+        var yaml = ReadPipeline();
+        var bddStart = yaml.IndexOf("- stage: Bdd", StringComparison.Ordinal);
+        var bddEnd = yaml.IndexOf("- stage: Verify", StringComparison.Ordinal);
+        var block = yaml[bddStart..bddEnd];
+
+        Assert.Contains("tests/CouponService.Bdd/CouponService.Bdd.csproj", block, StringComparison.Ordinal);
+        Assert.Contains("BDD_Bdd__Mode: Http", block, StringComparison.Ordinal);
+        Assert.Contains("apimGatewayUrl", block, StringComparison.Ordinal);
+        Assert.Contains("/coupons", block, StringComparison.Ordinal);
+        Assert.Contains("/orders", block, StringComparison.Ordinal);
+        Assert.Contains("BDD_Bdd__CouponServiceBaseUrl", block, StringComparison.Ordinal);
+        Assert.Contains("BDD_Bdd__OrderApiBaseUrl", block, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Pipeline_defines_the_eight_section_18_stages_in_order()
     {
         // AC-9.1 / section 18 — empty-RG path is expressed as this ordered CD sequence.
