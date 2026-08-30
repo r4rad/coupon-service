@@ -64,13 +64,15 @@ public sealed class AzurePipelinesTests
     [Fact]
     public void Pull_requests_run_build_test_and_bicep_but_never_provision_or_deploy()
     {
-        // AC-9.4 — CI on PRs must not deploy; CD stages are gated on isCD.
+        // AC-9.4 / P-14 — CI on PRs must not deploy; CD stages are gated on isCD.
         var yaml = ReadPipeline();
         Assert.Contains("pr:", yaml, StringComparison.Ordinal);
         Assert.Contains("az bicep build", yaml, StringComparison.Ordinal);
         Assert.Contains("az bicep lint", yaml, StringComparison.Ordinal);
 
-        Assert.Contains("isCD:", yaml, StringComparison.Ordinal);
+        Assert.Contains("name: isCD", yaml, StringComparison.Ordinal);
+        Assert.Contains("refs/heads/develop", yaml, StringComparison.Ordinal);
+        Assert.Contains("refs/heads/main", yaml, StringComparison.Ordinal);
         Assert.Contains("eq(variables['Build.Reason'], 'Manual')", yaml, StringComparison.Ordinal);
 
         foreach (var stage in new[] { "Package", "Provision", "Deploy", "Seed", "Bdd", "Verify" })
@@ -82,6 +84,20 @@ public sealed class AzurePipelinesTests
             var block = next >= 0 ? yaml[start..next] : yaml[start..];
             Assert.Contains("eq(variables['isCD'], 'true')", block, StringComparison.Ordinal);
         }
+    }
+
+    [Fact]
+    public void Pipeline_maps_develop_and_main_to_separate_resource_groups_and_param_files()
+    {
+        // P-14 — one YAML; branch selects non-prod vs prod RG and bicepparam.
+        var yaml = ReadPipeline();
+        Assert.Contains("- develop", yaml, StringComparison.Ordinal);
+        Assert.Contains("rg-coupon-demo", yaml, StringComparison.Ordinal);
+        Assert.Contains("rg-coupon-prod", yaml, StringComparison.Ordinal);
+        Assert.Contains("main.dev.bicepparam", yaml, StringComparison.Ordinal);
+        Assert.Contains("main.prod.bicepparam", yaml, StringComparison.Ordinal);
+        Assert.Contains("bicepParametersFile", yaml, StringComparison.Ordinal);
+        Assert.Contains("--parameters \"$(bicepParametersFile)\"", yaml, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -158,8 +174,9 @@ public sealed class AzurePipelinesTests
         Assert.True(whatIf < publish, "what-if must run before the artifact publish.");
         Assert.True(publish < create, "what-if artifact must be published before create (AC-9.2).");
         Assert.Contains("bicep-what-if", block, StringComparison.Ordinal);
-        Assert.Contains("main.demo.bicepparam", block, StringComparison.Ordinal);
+        Assert.Contains("$(bicepParametersFile)", block, StringComparison.Ordinal);
         Assert.Contains("infra/bicep/main.bicep", block, StringComparison.Ordinal);
+        Assert.DoesNotContain("main.demo.bicepparam", block, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -223,6 +240,10 @@ public sealed class AzurePipelinesTests
         Assert.Contains("Nothing else is manual", docs, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("No GitHub Actions", docs, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("rg-coupon-demo", docs, StringComparison.Ordinal);
+        Assert.Contains("rg-coupon-prod", docs, StringComparison.Ordinal);
+        Assert.Contains("develop", docs, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("User Access Administrator", docs, StringComparison.Ordinal);
+        Assert.Contains("eastus2", docs, StringComparison.Ordinal);
     }
 
     [Fact]

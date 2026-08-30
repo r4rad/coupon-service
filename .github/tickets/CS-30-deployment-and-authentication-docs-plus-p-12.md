@@ -5,7 +5,7 @@
 | **Wave** | 8 — Live Azure provision, Entra, CD run, docs |
 | **Size** | M |
 | **Labels** | `wave-8, area:infra, size:M` |
-| **Blocked by** | [CS-29](CS-29-wire-azure-pipelines-cd-and-prove-a-green-full-run.md) |
+| **Blocked by** | [CS-29](CS-29-multi-stage-pipelines-cd-develop-then-main.md) |
 | **Blocks** | — |
 
 > **Read [`AGENTS.md`](../../AGENTS.md) before starting.** It carries the standing rules —
@@ -14,16 +14,17 @@
 
 ## Goal
 
-Leave the reviewer with clear deployment and authentication write-ups, and correct the APIM cache claim per decision P-12.
+Leave the reviewer with clear multi-stage deployment and authentication write-ups, and correct the APIM cache claim per decision P-12.
 
 ## Blocked by
 
-- CS-29 — Wire Azure Pipelines CD and prove a green full run
+- CS-29 — Multi-stage Pipelines CD (develop then main) and green runs
 
 ## Scope — touch only these paths
 
 - `docs/deployment.md`
 - `docs/authentication.md`
+- `docs/pipeline-prerequisites.md`
 - `docs/solution-architecture.md`
 - `docs/assumptions.md`
 - `README.md`
@@ -34,7 +35,7 @@ pull request under a heading `Out-of-scope changes`.
 
 ## Out of scope
 
-- Further infrastructure changes unless a doc reveals a factual error, which must be fixed and called out.
+- Further infrastructure or pipeline behaviour changes unless a doc reveals a factual error, which must be fixed and called out under Out-of-scope changes.
 - React SPA (optional stretch, not this ticket).
 
 ## Acceptance criteria
@@ -51,10 +52,11 @@ Each one needs a test that would fail without this change.
 
 ## Implementation notes
 
-- Complete docs/deployment.md: empty RG to green pipeline, teardown, SKUs, what-if requirement, link to azure-pipelines.yml.
+- Complete docs/deployment.md: feature->develop->main flow, empty RG to green pipeline for each environment, what-if, teardown, SKUs, soft-delete/purge-protection naming, link to azure-pipelines.yml and param files.
 - Complete docs/authentication.md: Entra apps, roles, APIM validate-jwt, managed identity hop, local test-token guard behaviour.
-- Apply P-12: edit docs/solution-architecture.md so it no longer claims APIM Consumption response caching; document Static Web Apps CDN plus backend ETag and Cache-Control instead.
-- Write docs/assumptions.md for currency, region, SKUs, and anything deferred (simulate, shadow, SPA).
+- Align docs/pipeline-prerequisites.md with the live CS-29 setup (private project, WIF, UAA on both RGs, branch policies).
+- Apply P-12: edit docs/solution-architecture.md so it no longer claims APIM Consumption response caching; document Static Web Apps CDN plus backend ETag and Cache-Control instead. Document P-13/P-14 pipeline branching in the architecture or assumptions.
+- Write docs/assumptions.md for currency, region, SKUs, private ADO projects (no public for new orgs), dual RGs, and deferred work (simulate, shadow, SPA).
 - Point README.md at these docs so a reviewer finds them in one hop.
 
 ## Verification
@@ -93,6 +95,7 @@ Then:
   2. Implement the ticket, touching only these paths:
        docs/deployment.md
        docs/authentication.md
+       docs/pipeline-prerequisites.md
        docs/solution-architecture.md
        docs/assumptions.md
        README.md
