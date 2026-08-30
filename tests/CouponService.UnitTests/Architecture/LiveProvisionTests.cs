@@ -23,10 +23,38 @@ public sealed class LiveProvisionTests
         Assert.DoesNotContain("param location = 'eastasia'", parameters, StringComparison.Ordinal);
 
         // Preferred template default stays westeurope for subscriptions that can use it.
+        // Leading salt: take() truncates trailing salts; prefix must change Key Vault names.
         var main = Read(Path.Combine("infra", "bicep", "main.bicep"));
         Assert.Contains("param location string = 'westeurope'", main, StringComparison.Ordinal);
         Assert.Contains("param staticWebAppLocation string", main, StringComparison.Ordinal);
-        Assert.Contains("${uniqueString(resourceGroup().id)}cs28", main, StringComparison.Ordinal);
+        Assert.Contains("take('v29${uniqueString(resourceGroup().id)}', 13)", main, StringComparison.Ordinal);
+        Assert.DoesNotContain("${uniqueString(resourceGroup().id)}cs28", main, StringComparison.Ordinal);
+
+        foreach (var envFile in new[] { "main.dev.bicepparam", "main.prod.bicepparam" })
+        {
+            var envParams = Read(Path.Combine("infra", "bicep", envFile));
+            Assert.Contains("param location = 'eastus2'", envParams, StringComparison.Ordinal);
+            Assert.Contains("param staticWebAppLocation = 'eastus2'", envParams, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void Leading_name_salt_changes_the_truncated_key_vault_name()
+    {
+        // take('kv-coupon-demo-' + suffix, 24) keeps only 9 suffix chars; a trailing salt is lost.
+        const string prefix = "kv-coupon-demo-";
+        const string unique = "r4hxkv774xxxx";
+
+        static string TruncateVault(string suffix) => (prefix + suffix)[..24];
+
+        static string Take13(string value) => value.Length <= 13 ? value : value[..13];
+
+        var unsalt = TruncateVault(unique);
+        var trailing = TruncateVault(Take13(unique + "cs28"));
+        var leading = TruncateVault(Take13("v29" + unique));
+
+        Assert.Equal(unsalt, trailing);
+        Assert.NotEqual(unsalt, leading);
     }
 
     [Fact]

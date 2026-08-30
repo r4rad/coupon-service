@@ -14,7 +14,7 @@
 
 ## Goal
 
-Apply the authored Bicep into the existing empty resource group rg-coupon-demo in westeurope and iterate until provisioning succeeds with demo SKUs.
+Apply the authored Bicep into the existing empty resource group rg-coupon-demo in eastus2 (observed working region for this subscription) and iterate until provisioning succeeds with demo SKUs.
 
 ## Blocked by
 
@@ -48,7 +48,7 @@ Each one needs a test that would fail without this change.
 
 ## Implementation notes
 
-- Confirm az account points at the demo subscription and resource group rg-coupon-demo exists in westeurope.
+- Confirm az account points at the demo subscription and resource group rg-coupon-demo exists in eastus2 (not westeurope - that region rejects new resources on this subscription).
 - Run az deployment group what-if against rg-coupon-demo, capture the output, then az deployment group create. Fix template issues in atomic commits until create succeeds.
 - Prove Cosmos free-tier or serverless, APIM Consumption, Container Apps consumption, and ACR Basic match NFR-6. No Developer-tier APIM.
 - Confirm Container Apps are running the P-11 placeholder image so a later image push can update revisions without a chicken-and-egg.

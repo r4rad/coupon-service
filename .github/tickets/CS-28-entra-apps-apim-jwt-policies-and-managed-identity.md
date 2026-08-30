@@ -6,7 +6,7 @@
 | **Size** | L |
 | **Labels** | `wave-8, area:security, area:infra, size:L` |
 | **Blocked by** | [CS-27](CS-27-first-bicep-provision-into-rg-coupon-demo.md) |
-| **Blocks** | [CS-29](CS-29-wire-azure-pipelines-cd-and-prove-a-green-full-run.md) |
+| **Blocks** | [CS-29](CS-29-multi-stage-pipelines-cd-develop-then-main.md) |
 
 > **Read [`AGENTS.md`](../../AGENTS.md) before starting.** It carries the standing rules —
 > money as `decimal`, engine purity, determinism via `IClock`, scope discipline, the definition

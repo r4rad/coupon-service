@@ -47,7 +47,7 @@ Each one needs a test that would fail without this change.
 ## Implementation notes
 
 - Modules: observability, identity, keyvault, cosmos, acr, containerapps, apim, apim-api, staticwebapp, and an appservice fallback.
-- main.bicep composing them, with main.demo.bicepparam carrying no secrets. Parameters for location default to westeurope; resource group name is not baked into the template.
+- main.bicep composing them, with main.demo.bicepparam carrying no secrets (CS-29 adds main.dev.bicepparam and main.prod.bicepparam for multi-stage CD). Parameters: template default may stay westeurope, but demo/dev/prod param files for this subscription must use eastus2 (observed: westeurope is locationineligible). Resource group name is not baked into the template. Globally unique names (Key Vault, APIM) must remain unique after take() truncation - put any collision salt at the start of uniqueSuffix, never only at the end.
 - Pin the free and near-free SKUs from section 17: APIM Consumption, Container Apps consumption, Static Web Apps Free, Cosmos serverless with a free-tier switch, Log Analytics with a daily cap, ACR Basic as the only paid SKU.
 - Container Apps are created with a public placeholder image, per decision P-11, so the first deploy into an empty resource group does not deadlock on a registry that has no image yet.
 - Tag every resource with project, env and owner so cost can be filtered and the environment deleted in one command.

@@ -47,8 +47,9 @@ param couponApiAudience string = 'api://coupon-service'
 param spaOrigin string = 'https://localhost:5173'
 
 // Derived from the deployment resource group so the template never bakes in an RG name (AC-9.1).
-// Salt bumped when soft-deleted globally unique names (Key Vault / APIM) block reuse under purge protection.
-var uniqueSuffix = '${uniqueString(resourceGroup().id)}cs28'
+// Leading salt: Key Vault uses take(..., 24), which drops a trailing salt and kept colliding on
+// soft-deleted kv-coupon-demo-r4hxkv774. Prefix must change the truncated name (CS-29).
+var uniqueSuffix = take('v29${uniqueString(resourceGroup().id)}', 13)
 
 var tags = {
   project: projectName

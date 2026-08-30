@@ -4,7 +4,7 @@
 
 The full architecture is already written and reviewed: **[docs/solution-architecture.md](../../../docs/solution-architecture.md) is the design of record** — component structure, the policy engine, redemption lifecycle, data model, security, scalability, infrastructure, pipeline and ADRs all live there. This document does not restate it. It records the **decisions taken during implementation planning** that either refine, correct or contradict it, plus the concrete type signatures and project layout so implementation is unambiguous.
 
-Executable delivery tickets live in `.github/tickets/` (generated from `.github/tickets.json`). Wave 7 is **CS-25** (Bicep) and **CS-26** (Azure Pipelines CI/CD + seed). Wave 8 is **CS-27** (first provision), **CS-28** (Entra/APIM/MI), **CS-29** (green CD run), **CS-30** (docs + P-12).
+Executable delivery tickets live in `.github/tickets/` (generated from `.github/tickets.json`). Wave 7 is **CS-25** (Bicep) and **CS-26** (Azure Pipelines CI/CD + seed). Wave 8 is **CS-27** (first provision), **CS-28** (Entra/APIM/MI), **CS-29** (multi-stage develop/main CD + green runs), **CS-30** (docs + P-12).
 
 ---
 
@@ -24,7 +24,8 @@ Executable delivery tickets live in `.github/tickets/` (generated from `.github/
 | P-10 | The Order API persists to a third Cosmos container, `orders`, partitioned by `/orderId` | In-memory orders disappear when a scale-to-zero replica recycles, which reads as a bug in a demo | Section 11 showed two containers; there are three |
 | P-11 | Container Apps are provisioned with a public placeholder image, then the pipeline updates the revision with the built image | Resolves the registry chicken-and-egg on a first deploy into an empty resource group | Makes the section 18 stage order workable |
 | P-12 | **Correction:** drop the APIM response-cache optimisation | The Consumption tier has no internal cache; `cache-lookup` there requires an external Redis we do not provision | Section 14 of the design of record must be edited; rely on Static Web Apps CDN plus backend `ETag` and `Cache-Control` |
-| P-13 | **CI and CD are Azure Pipelines only** — one `azure-pipelines.yml` for PR CI (build, test, bicep lint) and eight-stage CD; no GitHub Actions | The brief requires Azure DevOps; a second CI system splits gates and drifts | Section 18; tickets CS-26 and CS-29; `docs/pipeline-prerequisites.md` lists the three one-time manual steps |
+| P-13 | **CI and CD are Azure Pipelines only** — one `azure-pipelines.yml`; no GitHub Actions | The brief requires Azure DevOps; a second CI system splits gates and drifts | Section 18; tickets CS-26 and CS-29; `docs/pipeline-prerequisites.md` |
+| P-14 | **Branching:** feature → `develop` (PR CI) → merge CD to non-prod RG; `develop` → `main` (PR CI) → merge CD to production RG. Same eight stages; branch selects RG + bicepparam. Live region for this subscription is **eastus2** (westeurope ineligible) | Client delivery wants a staging gate before production without a second pipeline file | CS-29; `rg-coupon-demo` (dev/demo) and `rg-coupon-prod`; param files pin `eastus2`; WIF SP needs Contributor + User Access Administrator on both RGs for Key Vault roleAssignments |
 
 ---
 
@@ -49,8 +50,8 @@ tests/
 infra/bicep/                     # Delivery IaC (CS-25); first live apply is CS-27
 infra/terraform/                 # Documented alternative, not wired to the pipeline
 data/                            # pizzas.json, policies.seed.json
-azure-pipelines.yml              # Sole CI and CD definition (CS-26, CS-29) — no GitHub Actions
-docs/pipeline-prerequisites.md   # Three one-time ADO/WIF steps; nothing else is manual
+azure-pipelines.yml              # Sole CI and CD (P-13/P-14): PR CI; CD on develop + main
+docs/pipeline-prerequisites.md   # One-time ADO/WIF/UAA/RG steps; nothing else is manual
 ```
 `CouponService.Engine` references only `CouponService.Domain`. It has no Azure, ASP.NET or Cosmos dependency — that is what makes AC-10.5 achievable and is enforced by a project-reference test.
 

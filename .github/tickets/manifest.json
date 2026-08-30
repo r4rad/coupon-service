@@ -27,6 +27,6 @@
     "CS-26":  "CS-26-azure-pipelines-ci-and-cd-definition-with-seeding.md",
     "CS-27":  "CS-27-first-bicep-provision-into-rg-coupon-demo.md",
     "CS-28":  "CS-28-entra-apps-apim-jwt-policies-and-managed-identity.md",
-    "CS-29":  "CS-29-wire-azure-pipelines-cd-and-prove-a-green-full-run.md",
+    "CS-29":  "CS-29-multi-stage-pipelines-cd-develop-then-main.md",
     "CS-30":  "CS-30-deployment-and-authentication-docs-plus-p-12.md"
 }
