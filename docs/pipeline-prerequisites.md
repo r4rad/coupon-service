@@ -70,7 +70,7 @@ This subscription rejects `westeurope` for new resources (`RequestDisallowedByAz
 
 ### Container Apps environment quota
 
-This subscription allows **at most one** Container Apps managed environment per region (`MaxNumberOfRegionalEnvironmentsInSubExceeded`). Non-prod (`main.dev.bicepparam`) keeps `hostingMode = containerApps` and **`environmentName = demo`** so Provision updates the existing `cae-coupon-demo` instead of creating a second environment (for example `cae-coupon-dev`). Production (`main.prod.bicepparam`) uses `hostingMode = appService` (F1) so both resource groups can live in `eastus2` without a second CAE.
+This subscription allows **at most one** Container Apps managed environment per region (`MaxNumberOfRegionalEnvironmentsInSubExceeded`). Both non-prod (`main.dev.bicepparam`) and production (`main.prod.bicepparam`) use `hostingMode = appService` (F1) so neither creates a Container Apps environment. `main.demo.bicepparam` is the earlier CS-27 manual-apply file and intentionally keeps `hostingMode = containerApps` targeting the existing `cae-coupon-demo` — do not run it alongside `main.dev.bicepparam` against the same resource group, or the same quota error returns.
 ## 4. Entra app registration permission
 
 Grant permission to create or configure the Entra app registrations the demo needs (JWT validation and managed-identity role assignment). Wave 8 (**CS-28**) applies those registrations; the operator who wired the service connection completes that Entra work when requested.

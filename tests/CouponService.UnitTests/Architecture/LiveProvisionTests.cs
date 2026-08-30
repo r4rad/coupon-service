@@ -37,12 +37,12 @@ public sealed class LiveProvisionTests
             Assert.Contains("param staticWebAppLocation = 'eastus2'", envParams, StringComparison.Ordinal);
         }
 
-        // One CAE per region on this subscription — prod uses App Service F1 instead of a second CAE.
-        // Non-prod keeps environmentName=demo so Provision updates cae-coupon-demo instead of creating cae-coupon-dev.
+        // Both dev/demo and prod use App Service (F1) for consistency, avoiding the one-CAE-per-region
+        // subscription quota (MaxNumberOfRegionalEnvironmentsInSubExceeded) that a second CAE would trip.
+        // main.demo.bicepparam is the earlier CS-27 manual-apply file and intentionally keeps containerApps.
         var devParams = Read(Path.Combine("infra", "bicep", "main.dev.bicepparam"));
         var prodParams = Read(Path.Combine("infra", "bicep", "main.prod.bicepparam"));
-        Assert.Contains("param environmentName = 'demo'", devParams, StringComparison.Ordinal);
-        Assert.Contains("param hostingMode = 'containerApps'", devParams, StringComparison.Ordinal);
+        Assert.Contains("param hostingMode = 'appService'", devParams, StringComparison.Ordinal);
         Assert.Contains("param hostingMode = 'appService'", prodParams, StringComparison.Ordinal);
     }
 
