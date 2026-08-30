@@ -5,7 +5,9 @@ param staticWebAppLocation = 'eastus2'
 param environmentName = 'prod'
 param projectName = 'coupon-service'
 param ownerTag = 'coupon-prod'
-param hostingMode = 'appService'
+param hostingMode = 'containerApps'
+// One CAE per region on this subscription; dev owns eastus2, so prod compute runs in eastus.
+param containerAppsLocation = 'eastus'
 param cosmosEnableFreeTier = false
 param logAnalyticsDailyCapGb = 1
 param placeholderImage = 'mcr.microsoft.com/k8se/quickstart:latest'
