@@ -41,6 +41,7 @@ pull request under a heading `Out-of-scope changes`.
 - GitHub Actions. Do not add any.
 - simulate, shadow, alerts workbook, React SPA.
 - Creating Azure DevOps org/project in code - document only; operator runs the listed CLI/portal steps.
+- Merging develop into main. The operator does that after develop CD is green.
 
 ## Acceptance criteria
 
@@ -58,6 +59,7 @@ Each one needs a test that would fail without this change.
 
 ## Implementation notes
 
+- Git workflow: branch from latest develop; open the PR against develop (not main). Operator merges to develop, then later merges develop to main for production CD.
 - Branching (P-14): trigger and pr include develop and main. isCD true only for refs/heads/develop, refs/heads/main, or Manual - never for PullRequest. PR feature->develop and develop->main run Build+Test+bicep only.
 - Environments: develop CD uses environmentName=dev (or demo) and RG rg-coupon-demo (non-prod). main CD uses environmentName=prod and RG rg-coupon-prod. Add infra/bicep/main.dev.bicepparam and main.prod.bicepparam (no secrets). Map branch->RG+param file in YAML variables so an agent needs no manual override for the happy path.
 - Key Vault / APIM names: vault names use take(..., 24). A salt appended to uniqueSuffix is truncated and does NOT change the name (current failure: VaultAlreadyExists on kv-coupon-demo-r4hxkv774). Put any collision salt at the START of uniqueSuffix, e.g. take('v29${uniqueString(resourceGroup().id)}', 13). Add a unit/architecture test that the compiled vault naming expression changes when the salt changes. Do not rely on purge when enablePurgeProtection is true.
@@ -101,7 +103,7 @@ Read these first, in order. They are the contract and they override anything you
      where the two differ. Consult the architecture document for the reasoning behind a decision.
 
 Then:
-  1. Create branch ticket/CS-29-multi-stage-pipelines-cd-develop-then from the latest main.
+  1. Create branch ticket/CS-29-multi-stage-pipelines-cd-develop-then from the latest develop.
   2. Implement the ticket, touching only these paths:
        azure-pipelines.yml
        infra/bicep/
@@ -126,7 +128,9 @@ Then:
      building - with subjects of the form "CS-29: <imperative summary>". Do not squash the
      branch into a single commit; the granularity is what makes the pull request reviewable.
      Add no trailer of any kind: no Co-Authored-By, no Signed-off-by, no tool attribution.
-  7. Push the branch and open a pull request titled "CS-29: Multi-stage Pipelines CD (develop then main) and green runs".
+  7. Push the branch and open a pull request against develop titled "CS-29: Multi-stage Pipelines CD (develop then main) and green runs".
+     Do not open the PR against main. The operator merges develop to main separately after
+     the develop CD path is green.
      In the body, list every acceptance criterion satisfied, anything deliberately deferred,
      and any out-of-scope change you had to make.
 

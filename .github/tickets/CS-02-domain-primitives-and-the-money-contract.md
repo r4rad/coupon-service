@@ -105,7 +105,7 @@ Then:
      building - with subjects of the form "CS-02: <imperative summary>". Do not squash the
      branch into a single commit; the granularity is what makes the pull request reviewable.
      Add no trailer of any kind: no Co-Authored-By, no Signed-off-by, no tool attribution.
-  7. Push the branch and open a pull request titled "CS-02: Domain primitives and the money contract".
+  7. Push the branch and open a pull request against main titled "CS-02: Domain primitives and the money contract".
      In the body, list every acceptance criterion satisfied, anything deliberately deferred,
      and any out-of-scope change you had to make.
 

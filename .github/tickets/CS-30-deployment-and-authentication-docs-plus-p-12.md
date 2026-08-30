@@ -37,6 +37,7 @@ pull request under a heading `Out-of-scope changes`.
 
 - Further infrastructure or pipeline behaviour changes unless a doc reveals a factual error, which must be fixed and called out under Out-of-scope changes.
 - React SPA (optional stretch, not this ticket).
+- Merging develop into main. The operator does that after review.
 
 ## Acceptance criteria
 
@@ -52,6 +53,7 @@ Each one needs a test that would fail without this change.
 
 ## Implementation notes
 
+- Git workflow: branch from latest develop; open the PR against develop (not main). Operator merges develop to main separately.
 - Complete docs/deployment.md: feature->develop->main flow, empty RG to green pipeline for each environment, what-if, teardown, SKUs, soft-delete/purge-protection naming, link to azure-pipelines.yml and param files.
 - Complete docs/authentication.md: Entra apps, roles, APIM validate-jwt, managed identity hop, local test-token guard behaviour.
 - Align docs/pipeline-prerequisites.md with the live CS-29 setup (private project, WIF, UAA on both RGs, branch policies).
@@ -91,7 +93,7 @@ Read these first, in order. They are the contract and they override anything you
      where the two differ. Consult the architecture document for the reasoning behind a decision.
 
 Then:
-  1. Create branch ticket/CS-30-deployment-and-authentication-docs-plus from the latest main.
+  1. Create branch ticket/CS-30-deployment-and-authentication-docs-plus from the latest develop.
   2. Implement the ticket, touching only these paths:
        docs/deployment.md
        docs/authentication.md
@@ -113,7 +115,9 @@ Then:
      building - with subjects of the form "CS-30: <imperative summary>". Do not squash the
      branch into a single commit; the granularity is what makes the pull request reviewable.
      Add no trailer of any kind: no Co-Authored-By, no Signed-off-by, no tool attribution.
-  7. Push the branch and open a pull request titled "CS-30: Deployment and authentication docs plus P-12 correction".
+  7. Push the branch and open a pull request against develop titled "CS-30: Deployment and authentication docs plus P-12 correction".
+     Do not open the PR against main. The operator merges develop to main separately after
+     the develop CD path is green.
      In the body, list every acceptance criterion satisfied, anything deliberately deferred,
      and any out-of-scope change you had to make.
 
