@@ -109,6 +109,10 @@ module acr 'modules/acr.bicep' = {
   params: {
     location: location
     uniqueSuffix: uniqueSuffix
+    pullPrincipalIds: [
+      identity.outputs.couponIdentityPrincipalId
+      identity.outputs.orderIdentityPrincipalId
+    ]
     tags: tags
   }
 }
@@ -133,6 +137,7 @@ module containerapps 'modules/containerapps.bicep' = if (hostingMode == 'contain
     orderIdentityId: identity.outputs.orderIdentityId
     orderIdentityClientId: identity.outputs.orderIdentityClientId
     placeholderImage: placeholderImage
+    acrLoginServer: acr.outputs.acrLoginServer
     jwtAuthority: jwtAuthority
     couponApiAudience: couponApiAudience
     couponServiceScope: couponServiceScope
@@ -202,13 +207,17 @@ module staticwebapp 'modules/staticwebapp.bicep' = {
 }
 
 output hostingMode string = hostingMode
+output environmentName string = environmentName
 output apimGatewayUrl string = apim.outputs.apimGatewayUrl
 output cosmosEndpoint string = cosmos.outputs.cosmosEndpoint
 output keyVaultUri string = keyvault.outputs.keyVaultUri
 output acrLoginServer string = acr.outputs.acrLoginServer
+output acrName string = acr.outputs.acrName
 output staticWebAppHostname string = staticwebapp.outputs.staticWebAppDefaultHostname
 output couponBackendUrl string = couponBackendUrl
 output orderBackendUrl string = orderBackendUrl
+output couponAppName string = hostingMode == 'containerApps' ? containerapps!.outputs.couponAppName : appservice!.outputs.couponAppName
+output orderAppName string = hostingMode == 'containerApps' ? containerapps!.outputs.orderAppName : appservice!.outputs.orderAppName
 output appInsightsConnectionString string = observability.outputs.appInsightsConnectionString
 output orderIdentityClientId string = identity.outputs.orderIdentityClientId
 output couponIdentityClientId string = identity.outputs.couponIdentityClientId
