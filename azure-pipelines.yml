@@ -1,23 +1,30 @@
-# Sole CI and CD definition (P-13). No GitHub Actions.
-# PR CI: Build (incl. bicep build/lint) + Test. CD stages do not run on PRs.
-# Main or Manual: full eight-stage path from section 18.
+# Sole CI and CD definition (P-13 / P-14). No GitHub Actions.
+# PR CI into develop or main: Build (incl. bicep build/lint) + Test. No provision/deploy on PRs.
+# Merge to develop -> CD non-prod (rg-coupon-demo). Merge to main -> CD prod (rg-coupon-prod).
+# Manual: full eight-stage path; branch selected at queue time picks RG/params (override via parameters).
 # Azure auth: workload-identity federated ARM service connection only (AC-9.3).
 
 trigger:
   branches:
     include:
+      - develop
       - main
 
 pr:
   branches:
     include:
+      - develop
       - main
 
 parameters:
   - name: resourceGroupName
-    displayName: Resource group (must already exist; template does not create it)
+    displayName: Resource group override (leave default to derive from branch)
     type: string
-    default: rg-coupon-demo
+    default: ''
+  - name: bicepParametersFile
+    displayName: Bicep param file override (leave default to derive from branch)
+    type: string
+    default: ''
   - name: azureServiceConnection
     displayName: Workload-identity federated Azure Resource Manager service connection
     type: string
@@ -28,13 +35,35 @@ parameters:
     default: eastus2
 
 variables:
-  DOTNET_NOLOGO: true
-  DOTNET_CLI_TELEMETRY_OPTOUT: true
-  resourceGroupName: ${{ parameters.resourceGroupName }}
-  azureServiceConnection: ${{ parameters.azureServiceConnection }}
-  location: ${{ parameters.location }}
-  # CD on main merges and on explicit Manual runs. PullRequest never sets this path.
-  isCD: $[or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.Reason'], 'Manual'))]
+  - name: DOTNET_NOLOGO
+    value: 'true'
+  - name: DOTNET_CLI_TELEMETRY_OPTOUT
+    value: 'true'
+  - name: azureServiceConnection
+    value: ${{ parameters.azureServiceConnection }}
+  - name: location
+    value: ${{ parameters.location }}
+  # CD on develop/main merges and Manual. PullRequest never sets this path.
+  - name: isCD
+    value: $[or(eq(variables['Build.SourceBranch'], 'refs/heads/develop'), eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.Reason'], 'Manual'))]
+  - ${{ if ne(parameters.resourceGroupName, '') }}:
+    - name: resourceGroupName
+      value: ${{ parameters.resourceGroupName }}
+  - ${{ elseif eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
+    - name: resourceGroupName
+      value: rg-coupon-prod
+  - ${{ else }}:
+    - name: resourceGroupName
+      value: rg-coupon-demo
+  - ${{ if ne(parameters.bicepParametersFile, '') }}:
+    - name: bicepParametersFile
+      value: ${{ parameters.bicepParametersFile }}
+  - ${{ elseif eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
+    - name: bicepParametersFile
+      value: infra/bicep/main.prod.bicepparam
+  - ${{ else }}:
+    - name: bicepParametersFile
+      value: infra/bicep/main.dev.bicepparam
 
 stages:
   # --- 1 BUILD ---
@@ -185,7 +214,7 @@ stages:
                 az deployment group what-if \
                   --resource-group "$(resourceGroupName)" \
                   --template-file infra/bicep/main.bicep \
-                  --parameters infra/bicep/main.demo.bicepparam \
+                  --parameters "$(bicepParametersFile)" \
                   > "$(Build.ArtifactStagingDirectory)/what-if/what-if.txt"
 
           # AC-9.2 — what-if must be published as an artifact before create applies changes.
@@ -207,7 +236,7 @@ stages:
                 az deployment group create \
                   --resource-group "$(resourceGroupName)" \
                   --template-file infra/bicep/main.bicep \
-                  --parameters infra/bicep/main.demo.bicepparam \
+                  --parameters "$(bicepParametersFile)" \
                   --query properties.outputs \
                   -o json > "$(Build.ArtifactStagingDirectory)/provision-outputs/outputs.json"
 
