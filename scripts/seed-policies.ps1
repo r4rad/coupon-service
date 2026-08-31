@@ -28,162 +28,19 @@ param(
 $ErrorActionPreference = 'Stop'
 
 function Get-SeedPolicies {
-    # Deterministic set from solution-architecture section 11.3.
-    @(
-        @{
-            policyId = 'seed-save10'
-            code = 'SAVE10'
-            trigger = 'code'
-            status = 'Active'
-            engineSchema = '1.0'
-            condition = @{ gte = @( @{ fact = 'cart.subtotal' }, 0 ) }
-            effect = @{
-                percentage = @{
-                    value = 10
-                    of = @{ lines = @{ where = @{ gte = @( @{ fact = 'line.quantity' }, 1 ) } } }
-                }
-            }
-        },
-        @{
-            policyId = 'seed-flat5'
-            code = 'FLAT5'
-            trigger = 'code'
-            status = 'Active'
-            engineSchema = '1.0'
-            condition = @{ gte = @( @{ fact = 'cart.subtotal' }, 20 ) }
-            effect = @{ fixedAmount = @{ amount = 5.00 } }
-        },
-        @{
-            policyId = 'seed-veggie15'
-            code = 'VEGGIE15'
-            trigger = 'code'
-            status = 'Active'
-            engineSchema = '1.0'
-            condition = @{
-                all = @(
-                    @{ gte = @( @{ fact = 'cart.subtotal' }, 25.00 ) },
-                    @{
-                        every = @{
-                            over = 'cart.lines'
-                            where = @{ eq = @( @{ fact = 'line.category' }, 'Vegetarian' ) }
-                        }
-                    },
-                    @{
-                        any = @(
-                            @{ eq = @( @{ fact = 'customer.confirmedOrderCount' }, 0 ) },
-                            @{ in = @( @{ fact = 'time.localDayOfWeek' }, @('Saturday', 'Sunday') ) }
-                        )
-                    }
-                )
-            }
-            effect = @{
-                cap = @{
-                    max = 10.00
-                    of = @{
-                        percentage = @{
-                            value = 15
-                            of = @{
-                                lines = @{
-                                    where = @{ eq = @( @{ fact = 'line.category' }, 'Vegetarian' ) }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        @{
-            policyId = 'seed-bogo'
-            code = 'BOGO'
-            trigger = 'code'
-            status = 'Active'
-            engineSchema = '1.0'
-            condition = @{ gte = @( @{ fact = 'cart.totalQuantity' }, 2 ) }
-            effect = @{
-                nthItem = @{
-                    n = 2
-                    percentage = 100
-                    from = @{
-                        lines = @{
-                            where = @{ gte = @( @{ fact = 'line.quantity' }, 1 ) }
-                        }
-                    }
-                }
-            }
-        },
-        @{
-            policyId = 'seed-either'
-            code = 'EITHER'
-            trigger = 'code'
-            status = 'Active'
-            engineSchema = '1.0'
-            condition = @{ gte = @( @{ fact = 'cart.subtotal' }, 0 ) }
-            effect = @{
-                bestOf = @(
-                    @{
-                        percentage = @{
-                            value = 15
-                            of = @{
-                                lines = @{
-                                    where = @{ gte = @( @{ fact = 'line.quantity' }, 1 ) }
-                                }
-                            }
-                        }
-                    },
-                    @{ fixedAmount = @{ amount = 5.00 } }
-                )
-            }
-        },
-        @{
-            policyId = 'seed-oldcode'
-            code = 'OLDCODE'
-            trigger = 'code'
-            status = 'Active'
-            engineSchema = '1.0'
-            window = @{ to = '2020-01-01T00:00:00Z' }
-            condition = @{ gte = @( @{ fact = 'cart.subtotal' }, 0 ) }
-            effect = @{
-                percentage = @{
-                    value = 10
-                    of = @{ lines = @{ where = @{ gte = @( @{ fact = 'line.quantity' }, 1 ) } } }
-                }
-            }
-        },
-        @{
-            policyId = 'seed-limited1'
-            code = 'LIMITED1'
-            trigger = 'code'
-            status = 'Active'
-            engineSchema = '1.0'
-            limits = @{ totalUses = 1 }
-            condition = @{ lt = @( @{ fact = 'coupon.uses.total' }, 1 ) }
-            effect = @{
-                percentage = @{
-                    value = 10
-                    of = @{ lines = @{ where = @{ gte = @( @{ fact = 'line.quantity' }, 1 ) } } }
-                }
-            }
-        },
-        @{
-            policyId = 'seed-tuesday10'
-            trigger = 'automatic'
-            status = 'Active'
-            priority = 100
-            stackable = $false
-            engineSchema = '1.0'
-            condition = @{ eq = @( @{ fact = 'time.localDayOfWeek' }, 'Tuesday' ) }
-            effect = @{
-                percentage = @{
-                    value = 10
-                    of = @{ lines = @{ where = @{ gte = @( @{ fact = 'line.quantity' }, 1 ) } } }
-                }
-            }
-        }
-    )
+    # Single source of truth, shared with the application's startup seeder, which embeds the same
+    # file. Two copies of the deterministic set would drift silently.
+    $repoRoot = Split-Path -Parent $PSScriptRoot
+    $seedFile = Join-Path $repoRoot 'src/CouponService.Api/Seeding/SeedPolicies.json'
+    if (-not (Test-Path -LiteralPath $seedFile)) {
+        throw "Seed policy set not found at $seedFile."
+    }
+
+    return @(Get-Content -LiteralPath $seedFile -Raw | ConvertFrom-Json)
 }
 
 function ConvertTo-PolicyJson {
-    param([hashtable] $Policy)
+    param([object] $Policy)
     # ConvertTo-Json -Depth keeps nested effect/condition trees intact.
     return ($Policy | ConvertTo-Json -Depth 20 -Compress)
 }
