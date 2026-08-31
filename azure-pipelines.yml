@@ -342,48 +342,52 @@ stages:
             artifact: provision-outputs
 
           - pwsh: |
+              $ErrorActionPreference = 'Stop'
+
+              function Get-ConfiguredUrl {
+                param([string] $Value)
+                if ([string]::IsNullOrWhiteSpace($Value)) { return $null }
+                # Undefined ADO macros can remain as literal $(Name) in some contexts.
+                if ($Value -match '^\$\([A-Za-z0-9_]+\)$') { return $null }
+                return $Value.Trim()
+              }
+
               $outputsPath = Join-Path $env:PIPELINE_WORKSPACE 'provision-outputs/outputs.json'
               $outputs = Get-Content -LiteralPath $outputsPath -Raw | ConvertFrom-Json
-              $base = $env:ADMIN_API_BASE_URL
-              if ([string]::IsNullOrWhiteSpace($base)) {
-                $apim = [string]$outputs.apimGatewayUrl.value
-                if (-not [string]::IsNullOrWhiteSpace($apim)) {
+
+              $base = Get-ConfiguredUrl -Value $env:ADMIN_API_BASE_URL
+              if ($null -eq $base) {
+                $apim = Get-ConfiguredUrl -Value ([string]$outputs.apimGatewayUrl.value)
+                if ($null -ne $apim) {
                   $base = $apim.TrimEnd('/') + '/coupons'
                 }
                 else {
-                  $base = [string]$outputs.couponBackendUrl.value
+                  $base = Get-ConfiguredUrl -Value ([string]$outputs.couponBackendUrl.value)
                 }
               }
-              if ([string]::IsNullOrWhiteSpace($base)) {
+
+              if ($null -eq $base) {
                 throw 'Admin API base URL could not be resolved from AdminApiBaseUrl or provision outputs.'
               }
-              Write-Host "Seeding against $base"
-              Write-Host "##vso[task.setvariable variable=resolvedAdminBaseUrl]$base"
-              $order = $env:ORDER_API_BASE_URL
-              if ([string]::IsNullOrWhiteSpace($order)) {
-                $orderApim = [string]$outputs.apimGatewayUrl.value
-                if (-not [string]::IsNullOrWhiteSpace($orderApim)) {
-                  $order = $orderApim.TrimEnd('/') + '/orders'
-                }
-                else {
-                  $order = [string]$outputs.orderBackendUrl.value
-                }
-              }
-              Write-Host "##vso[task.setvariable variable=resolvedOrderBaseUrl]$order"
-            displayName: Resolve admin and order base URLs
-            env:
-              PIPELINE_WORKSPACE: $(Pipeline.Workspace)
-              ADMIN_API_BASE_URL: $(AdminApiBaseUrl)
-              ORDER_API_BASE_URL: $(OrderApiBaseUrl)
 
-          - pwsh: |
-              $ErrorActionPreference = 'Stop'
+              $uri = $null
+              if (-not [Uri]::TryCreate($base, [UriKind]::Absolute, [ref]$uri) -or
+                  ($uri.Scheme -ne [Uri]::UriSchemeHttp -and $uri.Scheme -ne [Uri]::UriSchemeHttps)) {
+                throw "Admin API base URL is not an absolute http(s) URI: '$base'"
+              }
+
+              if ([string]::IsNullOrWhiteSpace($env:SEED_BEARER_TOKEN)) {
+                throw 'AdminApiBearerToken is empty; seed cannot authenticate to the admin API.'
+              }
+
+              Write-Host "Seeding against $base"
               $scriptPath = Join-Path $env:BUILD_SOURCESDIRECTORY 'scripts/seed-policies.ps1'
-              & $scriptPath -BaseUrl $env:SEED_BASE_URL -BearerToken $env:SEED_BEARER_TOKEN
+              & $scriptPath -BaseUrl $base -BearerToken $env:SEED_BEARER_TOKEN
             displayName: Seed policies via admin API (AC-9.5, AC-9.6)
             env:
+              PIPELINE_WORKSPACE: $(Pipeline.Workspace)
               BUILD_SOURCESDIRECTORY: $(Build.SourcesDirectory)
-              SEED_BASE_URL: $(resolvedAdminBaseUrl)
+              ADMIN_API_BASE_URL: $(AdminApiBaseUrl)
               SEED_BEARER_TOKEN: $(AdminApiBearerToken)
 
   # --- 7 BDD (CD only) ---
@@ -407,28 +411,41 @@ stages:
             artifact: provision-outputs
 
           - pwsh: |
+              $ErrorActionPreference = 'Stop'
+
+              function Get-ConfiguredUrl {
+                param([string] $Value)
+                if ([string]::IsNullOrWhiteSpace($Value)) { return $null }
+                if ($Value -match '^\$\([A-Za-z0-9_]+\)$') { return $null }
+                return $Value.Trim()
+              }
+
               $outputsPath = Join-Path $env:PIPELINE_WORKSPACE 'provision-outputs/outputs.json'
               $outputs = Get-Content -LiteralPath $outputsPath -Raw | ConvertFrom-Json
-              $coupon = $env:ADMIN_API_BASE_URL
-              if ([string]::IsNullOrWhiteSpace($coupon)) {
-                $apim = [string]$outputs.apimGatewayUrl.value
-                if (-not [string]::IsNullOrWhiteSpace($apim)) {
+              $coupon = Get-ConfiguredUrl -Value $env:ADMIN_API_BASE_URL
+              if ($null -eq $coupon) {
+                $apim = Get-ConfiguredUrl -Value ([string]$outputs.apimGatewayUrl.value)
+                if ($null -ne $apim) {
                   $coupon = $apim.TrimEnd('/') + '/coupons'
                 }
                 else {
-                  $coupon = [string]$outputs.couponBackendUrl.value
+                  $coupon = Get-ConfiguredUrl -Value ([string]$outputs.couponBackendUrl.value)
                 }
               }
-              $order = $env:ORDER_API_BASE_URL
-              if ([string]::IsNullOrWhiteSpace($order)) {
-                $apim = [string]$outputs.apimGatewayUrl.value
-                if (-not [string]::IsNullOrWhiteSpace($apim)) {
+              $order = Get-ConfiguredUrl -Value $env:ORDER_API_BASE_URL
+              if ($null -eq $order) {
+                $apim = Get-ConfiguredUrl -Value ([string]$outputs.apimGatewayUrl.value)
+                if ($null -ne $apim) {
                   $order = $apim.TrimEnd('/') + '/orders'
                 }
                 else {
-                  $order = [string]$outputs.orderBackendUrl.value
+                  $order = Get-ConfiguredUrl -Value ([string]$outputs.orderBackendUrl.value)
                 }
               }
+              if ($null -eq $coupon -or $null -eq $order) {
+                throw 'BDD base URLs could not be resolved from pipeline variables or provision outputs.'
+              }
+              Write-Host "BDD coupon=$coupon order=$order"
               Write-Host "##vso[task.setvariable variable=bddCouponBaseUrl]$coupon"
               Write-Host "##vso[task.setvariable variable=bddOrderBaseUrl]$order"
             displayName: Resolve BDD base URLs

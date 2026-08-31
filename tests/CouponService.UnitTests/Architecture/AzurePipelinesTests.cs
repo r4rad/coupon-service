@@ -230,6 +230,10 @@ public sealed class AzurePipelinesTests
 
         Assert.Contains("scripts/seed-policies.ps1", block, StringComparison.Ordinal);
         Assert.Contains("AdminApiBearerToken", block, StringComparison.Ordinal);
+        Assert.Contains("SEED_BEARER_TOKEN", block, StringComparison.Ordinal);
+        Assert.Contains("provision-outputs/outputs.json", block, StringComparison.Ordinal);
+        Assert.Contains("UriKind]::Absolute", block, StringComparison.Ordinal);
+        Assert.DoesNotContain("arguments:", block, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("clientSecret", block, StringComparison.OrdinalIgnoreCase);
     }
 
