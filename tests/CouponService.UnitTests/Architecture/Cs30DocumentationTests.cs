@@ -128,22 +128,23 @@ public sealed class Cs30DocumentationTests
     }
 
     [Fact]
-    public void Seed_stage_passes_admin_url_and_token_through_environment_variables()
+    public void Seed_stage_resolves_its_url_in_one_step_and_carries_no_credential()
     {
-        // Token via env (not PowerShell@2 arguments). URL resolved and seeded in one step
-        // so a second-step $(resolvedAdminBaseUrl) env handoff cannot expand empty.
+        // The URL is resolved and used in a single step, so a second-step
+        // $(resolvedAdminBaseUrl) env handoff cannot expand empty. Seeding itself moved into the
+        // application, so the stage needs no token at all.
         var yaml = Read(Path.Combine("azure-pipelines.yml"));
         var seedStart = yaml.IndexOf("- stage: Seed", StringComparison.Ordinal);
         var seedEnd = yaml.IndexOf("- stage: Bdd", StringComparison.Ordinal);
         var block = yaml[seedStart..seedEnd];
 
-        Assert.Contains("scripts/seed-policies.ps1", block, StringComparison.Ordinal);
-        Assert.Contains("get-access-token", block, StringComparison.Ordinal);
         Assert.Contains("UriKind]::Absolute", block, StringComparison.Ordinal);
         Assert.Contains("couponBackendUrl", block, StringComparison.Ordinal);
+        Assert.Contains("/v1/health/ready", block, StringComparison.Ordinal);
         Assert.DoesNotContain("arguments:", block, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("SEED_BASE_URL", block, StringComparison.Ordinal);
         Assert.DoesNotContain("SEED_BEARER_TOKEN", block, StringComparison.Ordinal);
+        Assert.DoesNotContain("BearerToken", block, StringComparison.Ordinal);
         Assert.DoesNotContain("task.setvariable variable=resolvedAdminBaseUrl", block, StringComparison.Ordinal);
         Assert.DoesNotContain("apim.TrimEnd('/') + '/coupons'", block, StringComparison.Ordinal);
     }
