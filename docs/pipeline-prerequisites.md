@@ -131,18 +131,19 @@ Set these on the pipeline (or a variable group). Values are not committed:
 
 | Variable | Secret? | Purpose |
 |---|---|---|
-| `AdminApiBearerToken` | yes | **Optional fallback** admin JWT if WIF token acquisition fails. Prefer assigning `Coupon.Admin` to the pipeline SP (below). Stored user tokens expire and cause HTTP 401. Test tokens are rejected in Azure (`Authentication__TestToken__Enabled=false`). |
-| `AdminApiBaseUrl` | no | Optional override for seed: Coupon Service **backend** base URL (not APIM `/coupons`). Default is `couponBackendUrl` from provision outputs. Admin routes on APIM are under `/admin` and require a subscription key — CD seeds the backend instead. |
+| `AdminApiBearerToken` | yes | **No longer used by CD.** Seeding moved into the application (below), so the pipeline holds no admin credential. Keep it only if you drive `scripts/seed-policies.ps1` manually. |
+| `AdminApiBaseUrl` | no | Optional override for the Coupon Service **backend** base URL used by seed verification. Default is `couponBackendUrl` from provision outputs. |
 | `OrderApiBaseUrl` | no | Optional override for Order API base URL used by post-deploy BDD |
 
-### Pipeline SP needs `Coupon.Admin` (seed)
+### The pipeline holds no admin credential
 
-CD Seed runs `az account get-access-token --resource api://coupon-service` under the WIF service connection. That token only authorises admin APIs when the Coupon Service app registration has:
+CD used to acquire an admin JWT and POST the policy set through `/v1/admin/policies`. That coupled every deployment to Entra app registrations, app-role assignments and token-version details, and it wrote into a **per-instance** policy store — the service registers `InMemoryPolicyRepository`, so anything seeded over HTTP reached one replica and vanished on restart.
 
-1. App role `Coupon.Admin` with **allowed member types = Applications** (and/or Users/Groups).
-2. That role assigned to the **WIF service principal** used by `coupon-demo-wif` (Graph `appRoleAssignedTo`, same pattern as `Coupon.Redeem` for the Order API MI).
+The Coupon Service now seeds itself as it starts (`Seeding__Enabled`, Bicep param `seedPoliciesOnStartup`), reading the same deterministic set from `src/CouponService.Api/Seeding/SeedPolicies.json`. Every replica converges to the same policies on every start, which is what **AC-9.5** and **AC-9.6** ask for.
 
-Both are what `scripts/setup-entra-app.ps1` (section 4) applies. Without them, Seed logs a warning naming the Entra failure and then returns **401 Unauthorized** against the Container App backend.
+The CD Seed stage therefore only **verifies**: it polls the anonymous readiness probe `/v1/health/ready` until the `policy-seed` health check reports healthy. No token, no gateway hop, nothing to expire.
+
+`scripts/setup-entra-app.ps1` and the app roles are still required for **AC-7.6** and **AC-7.7** — human admins calling `/v1/admin/policies`, APIM `validate-jwt`, and the Order API managed-identity hop — but they are no longer on the deployment critical path.
 
 Branch → RG / param file mapping lives in `azure-pipelines.yml` after CS-29 so Manual runs can still override parameters if needed.
 

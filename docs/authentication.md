@@ -102,17 +102,11 @@ OrderApi__CouponServiceScope     = api://coupon-service/.default
 
 Locally, leave `UseManagedIdentity` false and supply `OrderApi:CouponServiceToken` via user-secrets (test-token scheme on the Coupon Service).
 
-## Pipeline seed token (AC-9.5 / AC-9.6)
+## Seeding needs no token (AC-9.5 / AC-9.6)
 
-CD Seed calls the Coupon Service **backend** (not APIM `/coupons`) and must present an Entra JWT with `roles` containing `Coupon.Admin`. The pipeline prefers:
+CD no longer authenticates to seed. The Coupon Service seeds the deterministic policy set as it starts (`Seeding__Enabled`), and the pipeline verifies through the anonymous `/v1/health/ready` probe. See [`docs/pipeline-prerequisites.md`](pipeline-prerequisites.md#the-pipeline-holds-no-admin-credential).
 
-```text
-az account get-access-token --resource api://coupon-service
-```
-
-under the WIF service connection. Assign app role `Coupon.Admin` (Applications allowed) to that service principal — same Graph `appRoleAssignedTo` pattern as `Coupon.Redeem` for the Order API MI. `scripts/setup-entra-app.ps1 -AdminPrincipalId <wif-sp-object-id>` does both. A static `AdminApiBearerToken` variable is only a fallback; user JWTs expire and local TestTokens are rejected when `Authentication__TestToken__Enabled=false`.
-
-When acquisition fails the Seed step logs an Azure Pipelines warning quoting the Entra error before it falls back, so a missing registration (`AADSTS500011`) is distinguishable from a missing role assignment.
+`Coupon.Admin` is still required for the human administration path: `scripts/setup-entra-app.ps1 -AdminPrincipalId <sp-or-user-object-id>` assigns it, and `/v1/admin/policies` and APIM's admin product both enforce it. `scripts/seed-policies.ps1` remains available for driving the admin API by hand, and needs such a token.
 
 ## APIM edge (**AC-9.7**, **AC-7.6**)
 
