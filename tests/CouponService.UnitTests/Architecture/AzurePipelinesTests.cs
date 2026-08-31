@@ -15,6 +15,9 @@ public sealed class AzurePipelinesTests
     private static string ReadSeedScript() =>
         File.ReadAllText(Path.Combine(RepoRoot, "scripts", "seed-policies.ps1"));
 
+    private static string ReadEntraSetupScript() =>
+        File.ReadAllText(Path.Combine(RepoRoot, "scripts", "setup-entra-app.ps1"));
+
     private static string ReadPrerequisites() =>
         File.ReadAllText(Path.Combine(RepoRoot, "docs", "pipeline-prerequisites.md"));
 
@@ -230,13 +233,49 @@ public sealed class AzurePipelinesTests
 
         Assert.Contains("scripts/seed-policies.ps1", block, StringComparison.Ordinal);
         Assert.Contains("AdminApiBearerToken", block, StringComparison.Ordinal);
-        Assert.Contains("SEED_BEARER_TOKEN", block, StringComparison.Ordinal);
+        Assert.Contains("get-access-token", block, StringComparison.Ordinal);
+        Assert.Contains("couponApiAudience", block, StringComparison.Ordinal);
+        Assert.Contains("AzureCLI@2", block, StringComparison.Ordinal);
         Assert.Contains("provision-outputs/outputs.json", block, StringComparison.Ordinal);
         Assert.Contains("couponBackendUrl", block, StringComparison.Ordinal);
         Assert.Contains("UriKind]::Absolute", block, StringComparison.Ordinal);
         Assert.DoesNotContain("apim.TrimEnd('/') + '/coupons'", block, StringComparison.Ordinal);
+        Assert.DoesNotContain("SEED_BEARER_TOKEN", block, StringComparison.Ordinal);
         Assert.DoesNotContain("arguments:", block, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("clientSecret", block, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Seed_stage_reports_why_wif_token_acquisition_failed_before_falling_back()
+    {
+        // A missing app registration or role assignment must not surface only as HTTP 401
+        // from the backend, which is indistinguishable from an expired fallback token.
+        var yaml = ReadPipeline();
+        var seedStart = yaml.IndexOf("- stage: Seed", StringComparison.Ordinal);
+        var seedEnd = yaml.IndexOf("- stage: Bdd", StringComparison.Ordinal);
+        var block = yaml[seedStart..seedEnd];
+
+        Assert.Contains("task.logissue", block, StringComparison.Ordinal);
+        Assert.Contains("setup-entra-app.ps1", block, StringComparison.Ordinal);
+        Assert.DoesNotContain("-o tsv 2>$null", block, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Entra_setup_script_requests_v2_tokens_and_an_application_assignable_admin_role()
+    {
+        // JwtBearer pins ValidIssuer to the v2 authority (main.bicep sets jwtIssuer =
+        // jwtAuthority), so a version 1 registration issues iss = sts.windows.net and fails
+        // validation. A Users-only Coupon.Admin cannot be assigned to the pipeline principal.
+        Assert.True(File.Exists(Path.Combine(RepoRoot, "scripts", "setup-entra-app.ps1")));
+        var script = ReadEntraSetupScript();
+
+        Assert.Contains("requestedAccessTokenVersion = 2", script, StringComparison.Ordinal);
+        Assert.Contains("'Application', 'User'", script, StringComparison.Ordinal);
+        Assert.Contains("Coupon.Admin", script, StringComparison.Ordinal);
+        Assert.Contains("Coupon.Redeem", script, StringComparison.Ordinal);
+        Assert.Contains("appRoleAssignedTo", script, StringComparison.Ordinal);
+        Assert.Contains("api://coupon-service", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("clientSecret", script, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

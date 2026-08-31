@@ -138,11 +138,12 @@ public sealed class Cs30DocumentationTests
         var block = yaml[seedStart..seedEnd];
 
         Assert.Contains("scripts/seed-policies.ps1", block, StringComparison.Ordinal);
-        Assert.Contains("SEED_BEARER_TOKEN", block, StringComparison.Ordinal);
+        Assert.Contains("get-access-token", block, StringComparison.Ordinal);
         Assert.Contains("UriKind]::Absolute", block, StringComparison.Ordinal);
         Assert.Contains("couponBackendUrl", block, StringComparison.Ordinal);
         Assert.DoesNotContain("arguments:", block, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("SEED_BASE_URL", block, StringComparison.Ordinal);
+        Assert.DoesNotContain("SEED_BEARER_TOKEN", block, StringComparison.Ordinal);
         Assert.DoesNotContain("task.setvariable variable=resolvedAdminBaseUrl", block, StringComparison.Ordinal);
         Assert.DoesNotContain("apim.TrimEnd('/') + '/coupons'", block, StringComparison.Ordinal);
     }
