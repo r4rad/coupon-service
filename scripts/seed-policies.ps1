@@ -216,7 +216,17 @@ function Invoke-AdminJson {
     return Invoke-RestMethod @params
 }
 
+if ([string]::IsNullOrWhiteSpace($BaseUrl)) {
+    throw 'BaseUrl is empty; pass an absolute http(s) admin API base URL.'
+}
+
 $root = $BaseUrl.TrimEnd('/')
+$parsedRoot = $null
+if (-not [Uri]::TryCreate($root, [UriKind]::Absolute, [ref]$parsedRoot) -or
+    ($parsedRoot.Scheme -ne [Uri]::UriSchemeHttp -and $parsedRoot.Scheme -ne [Uri]::UriSchemeHttps)) {
+    throw "BaseUrl is not an absolute http(s) URI: '$BaseUrl'"
+}
+
 $policies = Get-SeedPolicies
 $created = 0
 $updated = 0

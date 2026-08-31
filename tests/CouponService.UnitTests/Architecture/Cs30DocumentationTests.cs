@@ -130,15 +130,19 @@ public sealed class Cs30DocumentationTests
     [Fact]
     public void Seed_stage_passes_admin_url_and_token_through_environment_variables()
     {
-        // Avoids ADO PowerShell@2 argument escaping failures when the bearer token contains shell metacharacters.
+        // Token via env (not PowerShell@2 arguments). URL resolved and seeded in one step
+        // so a second-step $(resolvedAdminBaseUrl) env handoff cannot expand empty.
         var yaml = Read(Path.Combine("azure-pipelines.yml"));
         var seedStart = yaml.IndexOf("- stage: Seed", StringComparison.Ordinal);
         var seedEnd = yaml.IndexOf("- stage: Bdd", StringComparison.Ordinal);
         var block = yaml[seedStart..seedEnd];
 
         Assert.Contains("scripts/seed-policies.ps1", block, StringComparison.Ordinal);
-        Assert.Contains("SEED_BASE_URL", block, StringComparison.Ordinal);
         Assert.Contains("SEED_BEARER_TOKEN", block, StringComparison.Ordinal);
+        Assert.Contains("UriKind]::Absolute", block, StringComparison.Ordinal);
+        Assert.Contains("apimGatewayUrl", block, StringComparison.Ordinal);
         Assert.DoesNotContain("arguments:", block, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("SEED_BASE_URL", block, StringComparison.Ordinal);
+        Assert.DoesNotContain("task.setvariable variable=resolvedAdminBaseUrl", block, StringComparison.Ordinal);
     }
 }
