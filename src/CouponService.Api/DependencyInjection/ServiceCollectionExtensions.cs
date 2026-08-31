@@ -1,5 +1,6 @@
 using CouponService.Api.Health;
 using CouponService.Api.Options;
+using CouponService.Api.Seeding;
 using CouponService.Application.Engine;
 using CouponService.Application.Policies;
 using CouponService.Application.Preview;
@@ -42,8 +43,16 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<IPolicyCandidateResolver, PolicyCandidateResolver>();
         services.AddSingleton<IAutomaticPolicyPreviewService, AutomaticPolicyPreviewService>();
 
+        services.AddOptions<PolicySeedOptions>()
+            .Bind(configuration.GetSection(PolicySeedOptions.SectionName));
+
+        services.AddSingleton<PolicySeedState>();
+        services.AddSingleton<PolicySeeder>();
+        services.AddHostedService<PolicySeedHostedService>();
+
         services.AddHealthChecks()
-            .AddCheck<PolicyRepositoryHealthCheck>("policies", tags: ["ready"]);
+            .AddCheck<PolicyRepositoryHealthCheck>("policies", tags: ["ready"])
+            .AddCheck<PolicySeedHealthCheck>("policy-seed", tags: ["ready"]);
 
         services.AddCouponObservabilityLogging();
 
