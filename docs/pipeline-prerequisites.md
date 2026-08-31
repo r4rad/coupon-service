@@ -2,7 +2,7 @@
 
 Azure Pipelines is the only CI and CD system for this repository (decisions **P-13**, **P-14**). There is no GitHub Actions workflow. Standing assumptions (currency, region, SKUs, deferred work) are in [`docs/assumptions.md`](assumptions.md).
 
-One-time manual steps below are required before the first CD run. **Nothing else is manual** — after these exist, `azure-pipelines.yml` provisions, deploys, seeds, runs BDD and verifies without portal clicks.
+One-time manual steps below are required before the first CD run. **Nothing else is manual** — after these exist, `azure-pipelines.yml` provisions, deploys, seeds, smokes and verifies without portal clicks.
 
 ## Branching model (P-14)
 
@@ -133,7 +133,10 @@ Set these on the pipeline (or a variable group). Values are not committed:
 |---|---|---|
 | `AdminApiBearerToken` | yes | **No longer used by CD.** Seeding moved into the application (below), so the pipeline holds no admin credential. Keep it only if you drive `scripts/seed-policies.ps1` manually. |
 | `AdminApiBaseUrl` | no | Optional override for the Coupon Service **backend** base URL used by seed verification. Default is `couponBackendUrl` from provision outputs. |
-| `OrderApiBaseUrl` | no | Optional override for Order API base URL used by post-deploy BDD |
+| `OrderApiBaseUrl` | no | Optional override for the Order API **backend** base URL. Stage 8 uses it; stage 7 uses `SmokeOrderBaseUrl`. |
+| `SmokeCouponBaseUrl` | no | Optional override for the gateway URL stage 7 smokes. Default is `apimGatewayUrl` + `/coupons` from provision outputs. |
+| `SmokeOrderBaseUrl` | no | Optional override for the Order API gateway URL stage 7 smokes. Default is `apimGatewayUrl` + `/orders`. |
+| `CouponApiAudience` | no | Optional override for the token audience stage 7 requests. Default is `couponApiAudience` from provision outputs. |
 
 ### The pipeline holds no admin credential
 
@@ -144,6 +147,8 @@ The Coupon Service now seeds itself as it starts (`Seeding__Enabled`, Bicep para
 The CD Seed stage therefore only **verifies**: it polls the anonymous readiness probe `/v1/health/ready` until the `policy-seed` health check reports healthy. No token, no gateway hop, nothing to expire.
 
 `scripts/setup-entra-app.ps1` and the app roles are still required for **AC-7.6** and **AC-7.7** — human admins calling `/v1/admin/policies`, APIM `validate-jwt`, and the Order API managed-identity hop — but they are no longer on the deployment critical path.
+
+Stage 7 does need the app registration to exist, because it requests a token for `couponApiAudience` to prove an authenticated preview works through the gateway. It needs **no app role**: the service authorizes only reservations (`Coupon.Redeem`) and admin (`Coupon.Admin`), and APIM's customer product checks audience and issuer without inspecting role claims. If the registration is missing, the stage fails with the `setup-entra-app.ps1` hint rather than degrading silently.
 
 Branch → RG / param file mapping lives in `azure-pipelines.yml` after CS-29 so Manual runs can still override parameters if needed.
 

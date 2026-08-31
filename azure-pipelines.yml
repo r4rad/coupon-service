@@ -396,93 +396,82 @@ stages:
               PIPELINE_WORKSPACE: $(Pipeline.Workspace)
               BUILD_SOURCESDIRECTORY: $(Build.SourcesDirectory)
               ADMIN_API_BASE_URL: $(AdminApiBaseUrl)
-  # --- 7 BDD (CD only) ---
-  - stage: Bdd
-    displayName: '7 BDD'
+  # --- 7 SMOKE (CD only) ---
+  # The Reqnroll scenarios run in process in the Test stage, where the clock and the policy
+  # store are controllable. A deployed service offers neither, so this stage verifies the
+  # deployment instead of re-running behaviour. See .kiro/specs/deployed-stack-smoke/bugfix.md.
+  - stage: Smoke
+    displayName: '7 Smoke'
     dependsOn: Seed
     condition: and(succeeded(), eq(variables['isCD'], 'true'))
     jobs:
-      - job: Bdd
-        displayName: Reqnroll through APIM
+      - job: Smoke
+        displayName: Smoke the deployed stack through APIM
         pool:
           vmImage: ubuntu-latest
-        variables:
-          # Prefer explicit ADO variables; Seed also writes guidance in docs for CS-29.
-          bddCouponBaseUrl: $(AdminApiBaseUrl)
-          bddOrderBaseUrl: $(OrderApiBaseUrl)
         steps:
           - checkout: self
 
           - download: current
             artifact: provision-outputs
 
-          - pwsh: |
-              $ErrorActionPreference = 'Stop'
+          # AzureCLI@2 rather than pwsh, because the smoke needs a real Entra token and only
+          # the service connection can mint one. Resolution and invocation stay in one step so
+          # no URL is handed between steps through a variable that can expand empty.
+          - task: AzureCLI@2
+            displayName: Smoke health, gateway auth and a seeded policy
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: pscore
+              scriptLocation: inlineScript
+              inlineScript: |
+                $ErrorActionPreference = 'Stop'
 
-              function Get-ConfiguredUrl {
-                param([string] $Value)
-                if ([string]::IsNullOrWhiteSpace($Value)) { return $null }
-                if ($Value -match '^\$\([A-Za-z0-9_]+\)$') { return $null }
-                return $Value.Trim()
-              }
+                function Get-ConfiguredValue {
+                  param([string] $Value)
+                  if ([string]::IsNullOrWhiteSpace($Value)) { return $null }
+                  if ($Value -match '^\$\([A-Za-z0-9_]+\)$') { return $null }
+                  return $Value.Trim()
+                }
 
-              $outputsPath = Join-Path $env:PIPELINE_WORKSPACE 'provision-outputs/outputs.json'
-              $outputs = Get-Content -LiteralPath $outputsPath -Raw | ConvertFrom-Json
-              $coupon = Get-ConfiguredUrl -Value $env:ADMIN_API_BASE_URL
-              if ($null -eq $coupon) {
-                $apim = Get-ConfiguredUrl -Value ([string]$outputs.apimGatewayUrl.value)
-                if ($null -ne $apim) {
-                  $coupon = $apim.TrimEnd('/') + '/coupons'
+                $outputsPath = Join-Path $env:PIPELINE_WORKSPACE 'provision-outputs/outputs.json'
+                $outputs = Get-Content -LiteralPath $outputsPath -Raw | ConvertFrom-Json
+
+                $coupon = Get-ConfiguredValue -Value $env:SMOKE_COUPON_BASE_URL
+                $order = Get-ConfiguredValue -Value $env:SMOKE_ORDER_BASE_URL
+
+                if ($null -eq $coupon -or $null -eq $order) {
+                  $apim = Get-ConfiguredValue -Value ([string]$outputs.apimGatewayUrl.value)
+                  if ($null -eq $apim) {
+                    throw 'apimGatewayUrl is absent from the provision outputs, so there is no gateway to smoke. Set SmokeCouponBaseUrl and SmokeOrderBaseUrl to smoke a different target.'
+                  }
+
+                  $gateway = $apim.TrimEnd('/')
+                  if ($null -eq $coupon) { $coupon = $gateway + '/coupons' }
+                  if ($null -eq $order) { $order = $gateway + '/orders' }
                 }
-                else {
-                  $coupon = Get-ConfiguredUrl -Value ([string]$outputs.couponBackendUrl.value)
+
+                $audience = Get-ConfiguredValue -Value $env:COUPON_API_AUDIENCE
+                if ($null -eq $audience) {
+                  $audience = Get-ConfiguredValue -Value ([string]$outputs.couponApiAudience.value)
                 }
-              }
-              $order = Get-ConfiguredUrl -Value $env:ORDER_API_BASE_URL
-              if ($null -eq $order) {
-                $apim = Get-ConfiguredUrl -Value ([string]$outputs.apimGatewayUrl.value)
-                if ($null -ne $apim) {
-                  $order = $apim.TrimEnd('/') + '/orders'
+                if ($null -eq $audience) {
+                  throw 'couponApiAudience could not be resolved from CouponApiAudience or the provision outputs.'
                 }
-                else {
-                  $order = Get-ConfiguredUrl -Value ([string]$outputs.orderBackendUrl.value)
-                }
-              }
-              if ($null -eq $coupon -or $null -eq $order) {
-                throw 'BDD base URLs could not be resolved from pipeline variables or provision outputs.'
-              }
-              Write-Host "BDD coupon=$coupon order=$order"
-              Write-Host "##vso[task.setvariable variable=bddCouponBaseUrl]$coupon"
-              Write-Host "##vso[task.setvariable variable=bddOrderBaseUrl]$order"
-            displayName: Resolve BDD base URLs
+
+                $scriptPath = Join-Path $env:BUILD_SOURCESDIRECTORY 'scripts/smoke-deployed-stack.ps1'
+                & $scriptPath -CouponBaseUrl $coupon -OrderBaseUrl $order -Audience $audience
             env:
               PIPELINE_WORKSPACE: $(Pipeline.Workspace)
-              ADMIN_API_BASE_URL: $(AdminApiBaseUrl)
-              ORDER_API_BASE_URL: $(OrderApiBaseUrl)
-
-          - task: UseDotNet@2
-            displayName: Install .NET SDK from global.json
-            inputs:
-              packageType: sdk
-              useGlobalJson: true
-
-          - task: DotNetCoreCLI@2
-            displayName: Reqnroll BDD against deployed stack
-            inputs:
-              command: test
-              projects: tests/CouponService.Bdd/CouponService.Bdd.csproj
-              arguments: --configuration Release
-              publishTestResults: true
-            env:
-              BDD_Bdd__Mode: Http
-              BDD_Bdd__CouponServiceBaseUrl: $(bddCouponBaseUrl)
-              BDD_Bdd__OrderApiBaseUrl: $(bddOrderBaseUrl)
-              BDD_Bdd__TokenStrategy: TestToken
+              BUILD_SOURCESDIRECTORY: $(Build.SourcesDirectory)
+              SMOKE_COUPON_BASE_URL: $(SmokeCouponBaseUrl)
+              SMOKE_ORDER_BASE_URL: $(SmokeOrderBaseUrl)
+              COUPON_API_AUDIENCE: $(CouponApiAudience)
 
   # --- 8 VERIFY (CD only) ---
   - stage: Verify
     displayName: '8 Verify'
-    dependsOn: Bdd
+    dependsOn: Smoke
     condition: and(succeeded(), eq(variables['isCD'], 'true'))
     jobs:
       - job: Verify

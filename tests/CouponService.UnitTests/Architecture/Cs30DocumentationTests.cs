@@ -56,8 +56,13 @@ public sealed class Cs30DocumentationTests
         Assert.Contains("Build", docs, StringComparison.Ordinal);
         Assert.Contains("Provision", docs, StringComparison.Ordinal);
         Assert.Contains("Seed", docs, StringComparison.Ordinal);
-        Assert.Contains("BDD", docs, StringComparison.Ordinal);
+        Assert.Contains("Smoke", docs, StringComparison.Ordinal);
         Assert.Contains("No portal configuration", docs, StringComparison.OrdinalIgnoreCase);
+
+        // The docs must say what the post-deploy stage does not cover, so a reviewer does not
+        // read stage 7 as a behavioural suite running against the deployment.
+        Assert.Contains("smoke-deployed-stack.ps1", docs, StringComparison.Ordinal);
+        Assert.Contains("MutableClock", docs, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -135,7 +140,7 @@ public sealed class Cs30DocumentationTests
         // application, so the stage needs no token at all.
         var yaml = Read(Path.Combine("azure-pipelines.yml"));
         var seedStart = yaml.IndexOf("- stage: Seed", StringComparison.Ordinal);
-        var seedEnd = yaml.IndexOf("- stage: Bdd", StringComparison.Ordinal);
+        var seedEnd = yaml.IndexOf("- stage: Smoke", StringComparison.Ordinal);
         var block = yaml[seedStart..seedEnd];
 
         Assert.Contains("UriKind]::Absolute", block, StringComparison.Ordinal);
