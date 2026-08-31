@@ -13,6 +13,9 @@ param entraTenantId string
 @description('JWT audience for the Coupon Service API (Application ID URI).')
 param couponApiAudience string
 
+@description('Second accepted audience: the app registration client id that version 2 tokens carry in aud. Callers pass the Application ID URI when the client id is unknown.')
+param couponApiClientId string
+
 @description('Allowed SPA origin for CORS on the customer product.')
 param spaOrigin string
 
@@ -62,6 +65,16 @@ resource jwtAudienceNamedValue 'Microsoft.ApiManagement/service/namedValues@2023
   properties: {
     displayName: 'jwt-audience'
     value: couponApiAudience
+    secret: false
+  }
+}
+
+resource jwtClientIdNamedValue 'Microsoft.ApiManagement/service/namedValues@2023-09-01-preview' = {
+  parent: apim
+  name: 'jwt-client-id'
+  properties: {
+    displayName: 'jwt-client-id'
+    value: couponApiClientId
     secret: false
   }
 }
@@ -191,6 +204,7 @@ resource customerProductPolicy 'Microsoft.ApiManagement/service/products/policie
     openIdConfigNamedValue
     jwtIssuerNamedValue
     jwtAudienceNamedValue
+    jwtClientIdNamedValue
     spaOriginNamedValue
   ]
 }
@@ -206,6 +220,7 @@ resource adminProductPolicy 'Microsoft.ApiManagement/service/products/policies@2
     openIdConfigNamedValue
     jwtIssuerNamedValue
     jwtAudienceNamedValue
+    jwtClientIdNamedValue
   ]
 }
 

@@ -29,6 +29,9 @@ param jwtAuthority string
 @description('Coupon Service API audience / Application ID URI.')
 param couponApiAudience string
 
+@description('Coupon Service app registration client id, the aud value of version 2 tokens.')
+param couponApiClientId string = ''
+
 @description('OAuth scope the Order API requests with managed identity (AC-7.7).')
 param couponServiceScope string
 
@@ -83,6 +86,10 @@ resource couponApp 'Microsoft.Web/sites@2023-12-01' = {
         {
           name: 'Authentication__Jwt__Audience'
           value: couponApiAudience
+        }
+        {
+          name: 'Authentication__Jwt__ClientId'
+          value: couponApiClientId
         }
         {
           name: 'Authentication__Jwt__Issuer'

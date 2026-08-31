@@ -1,6 +1,6 @@
 <!--
   Customer product policy (AC-9.7, AC-7.6).
-  Named values openid-config-url, jwt-issuer, jwt-audience, spa-origin are provisioned in apim-api.bicep.
+  Named values openid-config-url, jwt-issuer, jwt-audience, jwt-client-id, spa-origin are provisioned in apim-api.bicep.
   Health probes stay anonymous; all other customer routes require a bearer JWT.
 -->
 <policies>
@@ -30,6 +30,7 @@
           <openid-config url="{{openid-config-url}}" />
           <audiences>
             <audience>{{jwt-audience}}</audience>
+            <audience>{{jwt-client-id}}</audience>
           </audiences>
           <issuers>
             <issuer>{{jwt-issuer}}</issuer>

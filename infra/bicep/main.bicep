@@ -46,6 +46,9 @@ param entraTenantId string = tenant().tenantId
 @description('Coupon Service API Application ID URI (JWT audience and MI token resource).')
 param couponApiAudience string = 'api://coupon-service'
 
+@description('Coupon Service app registration client id. Version 2 tokens carry this GUID in aud instead of the Application ID URI, so it must be a valid audience. Emitted by scripts/setup-entra-app.ps1.')
+param couponApiClientId string = ''
+
 @description('Allowed SPA origin for APIM CORS on the customer product.')
 param spaOrigin string = 'https://localhost:5173'
 
@@ -123,6 +126,10 @@ var jwtIssuer = jwtAuthority
 var openIdConfigUrl = '${jwtAuthority}/.well-known/openid-configuration'
 var couponServiceScope = '${couponApiAudience}/.default'
 
+// APIM policy XML cannot conditionally omit an <audience>, so fall back to the Application ID
+// URI when the client id is unknown. That yields a duplicate audience rather than an empty one.
+var couponApiClientIdOrAudience = empty(couponApiClientId) ? couponApiAudience : couponApiClientId
+
 var containerAppsRegion = containerAppsLocation == '' ? location : containerAppsLocation
 
 module containerapps 'modules/containerapps.bicep' = if (hostingMode == 'containerApps') {
@@ -140,6 +147,7 @@ module containerapps 'modules/containerapps.bicep' = if (hostingMode == 'contain
     acrLoginServer: acr.outputs.acrLoginServer
     jwtAuthority: jwtAuthority
     couponApiAudience: couponApiAudience
+    couponApiClientId: couponApiClientId
     couponServiceScope: couponServiceScope
     tags: tags
   }
@@ -158,6 +166,7 @@ module appservice 'modules/appservice.bicep' = if (hostingMode == 'appService') 
     orderIdentityClientId: identity.outputs.orderIdentityClientId
     jwtAuthority: jwtAuthority
     couponApiAudience: couponApiAudience
+    couponApiClientId: couponApiClientId
     couponServiceScope: couponServiceScope
     tags: tags
   }
@@ -191,6 +200,7 @@ module apimApi 'modules/apim-api.bicep' = {
     orderBackendUrl: orderBackendUrl
     entraTenantId: entraTenantId
     couponApiAudience: couponApiAudience
+    couponApiClientId: couponApiClientIdOrAudience
     spaOrigin: spaOrigin
     openIdConfigUrl: openIdConfigUrl
     jwtIssuer: jwtIssuer
