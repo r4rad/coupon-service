@@ -37,12 +37,13 @@ Create an Azure Resource Manager service connection that authenticates with **wo
 
 ### RBAC the pipeline identity must have
 
-Bicep assigns **Key Vault Secrets User** to app managed identities (`Microsoft.Authorization/roleAssignments/write`). **Contributor alone is not enough.**
+Bicep assigns **Key Vault Secrets User** to app managed identities (`Microsoft.Authorization/roleAssignments/write`) and **AcrPull** so Container Apps can pull pipeline images. **Contributor alone is not enough.**
 
 On **each** target resource group (`rg-coupon-demo` and `rg-coupon-prod`), grant the WIF service principal:
 
 1. **Contributor**
 2. **User Access Administrator** (or Owner)
+3. **AcrPush** on each environment's ACR (or Contributor does not cover registry data-plane push — assign `AcrPush` after the first provision creates the registry)
 
 Example (replace object id with the SP from the service connection):
 
@@ -55,6 +56,9 @@ foreach ($rg in @('rg-coupon-demo', 'rg-coupon-prod')) {
   az role assignment create --assignee-object-id $spObjectId --assignee-principal-type ServicePrincipal `
     --role 'User Access Administrator' --scope "/subscriptions/$sub/resourceGroups/$rg"
 }
+# After first provision, grant AcrPush on each registry (names from deployment outputs):
+# az role assignment create --assignee-object-id $spObjectId --assignee-principal-type ServicePrincipal `
+#   --role AcrPush --scope $(az acr show -n <acrName> -g <rg> --query id -o tsv)
 ```
 
 ## 3. Resource groups
@@ -70,7 +74,14 @@ This subscription rejects `westeurope` for new resources (`RequestDisallowedByAz
 
 ### Container Apps environment quota
 
-This subscription allows **at most one** Container Apps managed environment per region (`MaxNumberOfRegionalEnvironmentsInSubExceeded`), and its App Service VM quota is zero (`SubscriptionIsOverQuotaForSku`), so the App Service F1 fallback cannot run here. Both environments therefore use `hostingMode = containerApps`: non-prod owns the single eastus2 slot (`cae-coupon-dev`), and production sets `containerAppsLocation = 'eastus'` in `main.prod.bicepparam` so only its Container Apps environment and apps run in the second region while every other prod resource stays in eastus2 with the resource group. `main.demo.bicepparam` is the earlier CS-27 manual-apply file and also targets `containerApps` (`cae-coupon-demo`) — do not run it against `rg-coupon-demo`, or it takes the eastus2 slot the dev pipeline needs and the same quota error returns.
+Observed on this subscription (**not** merely one-per-region):
+
+| Limit | Observed error | Effect |
+|---|---|---|
+| **At most one** Container Apps managed environment **in the whole subscription** | `MaxNumberOfGlobalEnvironmentsInSubExceeded` | Dev and prod cannot both host Container Apps at once |
+| Zero App Service VMs | `SubscriptionIsOverQuotaForSku` | The App Service F1 fallback cannot run here |
+
+`main.dev.bicepparam` / develop CD owns the single CAE slot (`cae-coupon-dev` in eastus2). `main.prod.bicepparam` still sets `hostingMode = containerApps` and `containerAppsLocation = 'eastus'` (P-14) so a quota increase or a second subscription unlocks production without another template change — until then, **prod provision fails** while the non-prod CAE exists. `main.demo.bicepparam` also targets `containerApps` (`cae-coupon-demo`) — do not run it against `rg-coupon-demo`, or it fights the develop pipeline for the same global slot.
 ## 4. Entra app registration permission
 
 Grant permission to create or configure the Entra app registrations the demo needs (JWT validation and managed-identity role assignment). Wave 8 (**CS-28**) applies those registrations; the operator who wired the service connection completes that Entra work when requested.

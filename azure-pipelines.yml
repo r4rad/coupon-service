@@ -244,41 +244,75 @@ stages:
     condition: and(succeeded(), eq(variables['isCD'], 'true'))
     jobs:
       - job: Deploy
-        displayName: Update apps and wait for readiness
+        displayName: Build images, update apps, wait for readiness
         pool:
           vmImage: ubuntu-latest
         steps:
           - checkout: self
 
           - download: current
-            artifact: coupon-api
-
-          - download: current
-            artifact: order-api
-
-          - download: current
             artifact: provision-outputs
 
-          - bash: |
-              set -euo pipefail
-              # Provision leaves apps on the public placeholder image (P-11).
-              # Container image build/push from a Dockerfile is wired in CS-29.
-              COUPON_URL=$(jq -r '.couponBackendUrl.value // empty' "$(Pipeline.Workspace)/provision-outputs/outputs.json")
-              if [ -z "$COUPON_URL" ]; then
-                echo "couponBackendUrl missing from provision outputs; cannot probe readiness."
-                exit 1
-              fi
-              echo "##vso[task.setvariable variable=couponBackendUrl]$COUPON_URL"
-              ORDER_URL=$(jq -r '.orderBackendUrl.value // empty' "$(Pipeline.Workspace)/provision-outputs/outputs.json")
-              echo "##vso[task.setvariable variable=orderBackendUrl]$ORDER_URL"
-              APIM_URL=$(jq -r '.apimGatewayUrl.value // empty' "$(Pipeline.Workspace)/provision-outputs/outputs.json")
-              echo "##vso[task.setvariable variable=apimGatewayUrl]$APIM_URL"
-            displayName: Read provision outputs for readiness
+          - task: AzureCLI@2
+            displayName: Build and push images to ACR then update Container Apps
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -euo pipefail
+                OUTPUTS="$(Pipeline.Workspace)/provision-outputs/outputs.json"
+                HOSTING=$(jq -r '.hostingMode.value // "containerApps"' "$OUTPUTS")
+                ACR_NAME=$(jq -r '.acrName.value // empty' "$OUTPUTS")
+                ACR_SERVER=$(jq -r '.acrLoginServer.value // empty' "$OUTPUTS")
+                COUPON_APP=$(jq -r '.couponAppName.value // empty' "$OUTPUTS")
+                ORDER_APP=$(jq -r '.orderAppName.value // empty' "$OUTPUTS")
+                COUPON_URL=$(jq -r '.couponBackendUrl.value // empty' "$OUTPUTS")
+                ORDER_URL=$(jq -r '.orderBackendUrl.value // empty' "$OUTPUTS")
+                APIM_URL=$(jq -r '.apimGatewayUrl.value // empty' "$OUTPUTS")
+                if [ -z "$COUPON_URL" ]; then
+                  echo "couponBackendUrl missing from provision outputs; cannot deploy."
+                  exit 1
+                fi
+                echo "##vso[task.setvariable variable=couponBackendUrl]$COUPON_URL"
+                echo "##vso[task.setvariable variable=orderBackendUrl]$ORDER_URL"
+                echo "##vso[task.setvariable variable=apimGatewayUrl]$APIM_URL"
+
+                if [ "$HOSTING" != "containerApps" ]; then
+                  echo "hostingMode=$HOSTING; image push is Container Apps only in this pipeline."
+                  exit 0
+                fi
+                if [ -z "$ACR_NAME" ] || [ -z "$ACR_SERVER" ] || [ -z "$COUPON_APP" ] || [ -z "$ORDER_APP" ]; then
+                  echo "ACR or Container App names missing from provision outputs."
+                  exit 1
+                fi
+
+                TAG="$(Build.BuildId)"
+                az acr login --name "$ACR_NAME"
+                docker build \
+                  --file src/CouponService.Api/Dockerfile \
+                  --tag "${ACR_SERVER}/coupon-api:${TAG}" \
+                  .
+                docker build \
+                  --file src/OrderApi/Dockerfile \
+                  --tag "${ACR_SERVER}/order-api:${TAG}" \
+                  .
+                docker push "${ACR_SERVER}/coupon-api:${TAG}"
+                docker push "${ACR_SERVER}/order-api:${TAG}"
+
+                az containerapp update \
+                  --name "$COUPON_APP" \
+                  --resource-group "$(resourceGroupName)" \
+                  --image "${ACR_SERVER}/coupon-api:${TAG}"
+                az containerapp update \
+                  --name "$ORDER_APP" \
+                  --resource-group "$(resourceGroupName)" \
+                  --image "${ACR_SERVER}/order-api:${TAG}"
 
           - bash: |
               set -euo pipefail
               # Readiness probe must pass before Seed (section 18).
-              for i in $(seq 1 30); do
+              for i in $(seq 1 36); do
                 if curl -fsS "${COUPON_BACKEND_URL}/v1/health/ready"; then
                   echo "Coupon API ready."
                   exit 0

@@ -26,6 +26,9 @@ param orderIdentityClientId string
 @description('Public placeholder image so first deploy into an empty RG does not deadlock on an empty ACR (P-11).')
 param placeholderImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
 
+@description('ACR login server. Empty skips registry identity wiring until the first image push.')
+param acrLoginServer string = ''
+
 @description('Entra authority used by the Coupon Service JwtBearer middleware (AC-7.6).')
 param jwtAuthority string
 
@@ -78,6 +81,12 @@ resource couponApp 'Microsoft.App/containerApps@2024-03-01' = {
         allowInsecure: false
       }
       activeRevisionsMode: 'Single'
+      registries: acrLoginServer == '' ? [] : [
+        {
+          server: acrLoginServer
+          identity: couponIdentityId
+        }
+      ]
     }
     template: {
       containers: [
@@ -144,6 +153,12 @@ resource orderApp 'Microsoft.App/containerApps@2024-03-01' = {
         allowInsecure: false
       }
       activeRevisionsMode: 'Single'
+      registries: acrLoginServer == '' ? [] : [
+        {
+          server: acrLoginServer
+          identity: orderIdentityId
+        }
+      ]
     }
     template: {
       containers: [

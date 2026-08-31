@@ -6,6 +6,9 @@ param location string
 @maxLength(45)
 param uniqueSuffix string
 
+@description('Principal IDs granted AcrPull so Container Apps can pull pipeline-built images.')
+param pullPrincipalIds array = []
+
 @description('Resource tags. Must include project, env and owner.')
 param tags object
 
@@ -25,6 +28,21 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
     publicNetworkAccess: 'Enabled'
   }
 }
+
+// AcrPull — well-known role definition id.
+var acrPullRoleId = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
+
+resource pullAssignments 'Microsoft.Authorization/roleAssignments@2022-04-01' = [
+  for (principalId, i) in pullPrincipalIds: {
+    name: guid(acr.id, principalId, acrPullRoleId)
+    scope: acr
+    properties: {
+      roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPullRoleId)
+      principalId: principalId
+      principalType: 'ServicePrincipal'
+    }
+  }
+]
 
 output acrId string = acr.id
 output acrName string = acr.name
