@@ -108,6 +108,27 @@ public sealed class AzurePipelinesTests
     }
 
     [Fact]
+    public void Verify_stage_resolves_the_backend_url_without_trusting_an_unset_macro()
+    {
+        // When AdminApiBaseUrl is unset, ADO expands $(AdminApiBaseUrl) to the literal string.
+        // A bash `[ -z ]` check treats that as present, so curl gets a bad hostname. The stage
+        // must discard the literal and fall back to couponBackendUrl from provision outputs.
+        var yaml = ReadPipeline();
+        var verifyStart = yaml.IndexOf("- stage: Verify", StringComparison.Ordinal);
+        Assert.True(verifyStart >= 0, "Verify stage is missing.");
+        var block = yaml[verifyStart..];
+
+        Assert.Contains("couponBackendUrl", block, StringComparison.Ordinal);
+        Assert.Contains("UriKind]::Absolute", block, StringComparison.Ordinal);
+        Assert.Contains("/v1/health/live", block, StringComparison.Ordinal);
+        Assert.Contains("/v1/health/ready", block, StringComparison.Ordinal);
+        Assert.Contains(@"^\$\([A-Za-z0-9_]+\)$", block, StringComparison.Ordinal);
+
+        Assert.DoesNotContain("curl -fsS", block, StringComparison.Ordinal);
+        Assert.DoesNotContain("[ -z \"$COUPON_URL\" ]", block, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Pipeline_defines_the_eight_section_18_stages_in_order()
     {
         // AC-9.1 / section 18 — empty-RG path is expressed as this ordered CD sequence.
