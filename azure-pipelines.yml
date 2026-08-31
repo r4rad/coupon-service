@@ -376,15 +376,15 @@ stages:
               ADMIN_API_BASE_URL: $(AdminApiBaseUrl)
               ORDER_API_BASE_URL: $(OrderApiBaseUrl)
 
-          - task: PowerShell@2
+          - pwsh: |
+              $ErrorActionPreference = 'Stop'
+              $scriptPath = Join-Path $env:BUILD_SOURCESDIRECTORY 'scripts/seed-policies.ps1'
+              & $scriptPath -BaseUrl $env:SEED_BASE_URL -BearerToken $env:SEED_BEARER_TOKEN
             displayName: Seed policies via admin API (AC-9.5, AC-9.6)
-            inputs:
-              targetType: filePath
-              filePath: scripts/seed-policies.ps1
-              arguments: >-
-                -BaseUrl "$(resolvedAdminBaseUrl)"
-                -BearerToken "$(AdminApiBearerToken)"
-              pwsh: true
+            env:
+              BUILD_SOURCESDIRECTORY: $(Build.SourcesDirectory)
+              SEED_BASE_URL: $(resolvedAdminBaseUrl)
+              SEED_BEARER_TOKEN: $(AdminApiBearerToken)
 
   # --- 7 BDD (CD only) ---
   - stage: Bdd
