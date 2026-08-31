@@ -1,14 +1,29 @@
 # Deployment
 
-Live apply and multi-stage CD (**CS-27**, **CS-29**). Auth, APIM JWT and Entra details live in `docs/authentication.md`. Pipeline one-time setup lives in `docs/pipeline-prerequisites.md`.
+Live apply and multi-stage CD (**CS-27**, **CS-29**, **CS-30**). Auth, APIM JWT and Entra details live in [`docs/authentication.md`](authentication.md). Pipeline one-time setup lives in [`docs/pipeline-prerequisites.md`](pipeline-prerequisites.md). Standing assumptions (currency, SKUs, deferred work) live in [`docs/assumptions.md`](assumptions.md).
 
-## Branch → environment (P-14)
+**Pipeline definition:** [`azure-pipelines.yml`](../azure-pipelines.yml) at the repository root — the sole CI/CD entry point (P-13). **Parameter files:** [`infra/bicep/main.dev.bicepparam`](../infra/bicep/main.dev.bicepparam) (develop / non-prod), [`infra/bicep/main.prod.bicepparam`](../infra/bicep/main.prod.bicepparam) (main / production), [`infra/bicep/main.demo.bicepparam`](../infra/bicep/main.demo.bicepparam) (CS-27 manual apply only).
+
+## Git workflow (P-14)
+
+```text
+feature/ticket-CS-XX  --PR (CI)-->  develop  --merge (CD)-->  rg-coupon-demo
+develop               --PR (CI)-->  main     --merge (CD)-->  rg-coupon-prod
+```
+
+Ticket branches are created from the latest `develop` and open pull requests against `develop`. The operator merges `develop` → `main` separately after the non-prod eight-stage CD run is green — not as part of a feature pull request.
+
+## Branch → environment
 
 | Branch / event | Resource group | Param file | Notes |
 |---|---|---|---|
 | PR into `develop` or `main` | — | — | CI only (Build + Test + bicep lint). No provision. |
 | Merge to `develop` | `rg-coupon-demo` | `infra/bicep/main.dev.bicepparam` | Non-prod; `environmentName=dev`, `hostingMode=containerApps` |
 | Merge to `main` | `rg-coupon-prod` | `infra/bicep/main.prod.bicepparam` | Production; `environmentName=prod`; CAE in `eastus` (`containerAppsLocation`), every other resource in `eastus2` |
+
+### Empty resource group → green pipeline (AC-9.1)
+
+After [`docs/pipeline-prerequisites.md`](pipeline-prerequisites.md) is satisfied, a merge to `develop` or `main` runs the same eight stages in [`azure-pipelines.yml`](../azure-pipelines.yml): **Build** → **Test** → **Package** → **Provision** (what-if artifact, then apply) → **Deploy** (ACR images, Container App update, readiness probe) → **Seed** (idempotent admin API) → **BDD** (Reqnroll through APIM) → **Verify**. No portal configuration of individual resources is required between stages.
 
 The WIF service principal needs **Contributor** and **User Access Administrator** on both RGs (Key Vault `roleAssignments/write`), plus **AcrPush** on each ACR after first provision. See `docs/pipeline-prerequisites.md`.
 

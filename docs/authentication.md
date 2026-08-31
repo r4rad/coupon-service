@@ -109,4 +109,11 @@ Do not commit tokens. Capture only status codes in the PR if you run this live.
 
 ## Local test-token scheme (P-8)
 
-Registered only in `Development` / `Test`. A startup guard throws if configuration enables it elsewhere (**AC-7.5**). Deployed environments use Entra JwtBearer exclusively.
+Registered only when **both** are true:
+
+1. `Authentication:TestToken:Enabled` is `true` in configuration, and
+2. `IHostEnvironment` is `Development`, `Test`, or `Testing`.
+
+`TestTokenStartupGuard` throws at startup if the flag is enabled in any other environment (**AC-7.5**). The guard message names the actual environment so misconfiguration surfaces before the first request. Deployed Container Apps set `Authentication__TestToken__Enabled=false` and use Entra JwtBearer exclusively (**AC-7.6** at the application layer).
+
+Locally, generate tokens with the same issuer, audience and signing key as `appsettings.Development.json` / user-secrets, or use the BDD `TokenProvider` (`TokenStrategy: TestToken`). Never enable the test scheme in `appsettings.json` for Production or Staging profiles.
