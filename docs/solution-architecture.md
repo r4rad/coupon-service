@@ -916,7 +916,7 @@ Ranked by CPU actually burned, the coupon logic is **not** the expensive part: J
 | ReadyToRun + trimming | Cuts JIT at startup — the cost scale-to-zero pays repeatedly |
 | Source-generated JSON | Removes per-request reflection on API and Cosmos serialisation |
 | `CancellationToken` to Cosmos | An aborted preview stops consuming CPU and RU |
-| APIM response cache + ETag on `/pizzas` | Static catalog → zero backend hits |
+| Static Web Apps CDN for SPA assets; Order API `ETag` + `Cache-Control` on `GET /v1/pizzas` | Edge-cached shell and conditional catalog fetches; APIM Consumption has no internal response cache (P-12) |
 | Bounded caches | Prevents both a memory leak and a code-enumeration vector |
 | No sync-over-async anywhere | One blocking wait starves the thread pool; worth more than every micro-optimisation combined |
 
@@ -1018,7 +1018,9 @@ flowchart LR
     S7 -.->|"any scenario fails"| X2["Stage fails, environment flagged"]
 ```
 
-Azure authentication uses a **workload-identity federated** service connection — no long-lived secret in the pipeline. Rollback is a previous-revision redeploy for services and a previous-template run for infrastructure.
+Azure authentication uses a **workload-identity federated** service connection — no long-lived secret in the pipeline (P-13, AC-9.3). Rollback is a previous-revision redeploy for services and a previous-template run for infrastructure.
+
+**Branching (P-14):** one `azure-pipelines.yml` serves PR CI and both CD environments. Pull requests into `develop` or `main` run Build + Test only. A merge to `develop` provisions and deploys to `rg-coupon-demo` via `main.dev.bicepparam`; a merge to `main` targets `rg-coupon-prod` via `main.prod.bicepparam`. Feature work branches from `develop` and opens pull requests back to `develop`; the operator merges `develop` → `main` separately after the non-prod CD path is green. See `docs/deployment.md` and `docs/pipeline-prerequisites.md`.
 
 One-time manual prerequisites, and nothing beyond these: create the Azure DevOps project, create the service connection, grant app-registration permission. Everything after is pipeline-driven — which is what the brief means by "no manual deployment or configuration steps".
 

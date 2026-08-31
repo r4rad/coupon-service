@@ -86,8 +86,8 @@ Hour figures are focused-work estimates. `[D3]` means inside the committed 2–3
 - [x] 8.2 APIM products, policies, JWT validation and rate limiting _(AC-9.7, AC-7.6, CS-28)_
 - [x] 8.3 Managed identity and app roles for the internal hop _(AC-7.7, CS-28)_
 - [x] 8.4 Multi-stage CD (develop → non-prod, main → prod), leading name salt, WIF+UAA, green eight-stage runs + BDD through APIM _(AC-9.3–9.6, AC-10.1, P-14, CS-29)_
-- [ ] 8.5 `docs/deployment.md`, `docs/authentication.md`, assumptions write-up for dual environments _(CS-30)_
-- [ ] 8.6 Correct the APIM cache claim in the design of record _(P-12, CS-30)_
+- [x] 8.5 `docs/deployment.md`, `docs/authentication.md`, assumptions write-up for dual environments _(CS-30)_
+- [x] 8.6 Correct the APIM cache claim in the design of record _(P-12, CS-30)_
 - [ ] 8.7 Deferred (not ticketed): `simulate` / shadow _(AC-6.5, AC-6.6)_, alerts/workbook _(AC-8.5)_, React SPA
 
 ---

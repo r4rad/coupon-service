@@ -1,6 +1,6 @@
 # Pipeline prerequisites
 
-Azure Pipelines is the only CI and CD system for this repository (decisions **P-13**, **P-14**). There is no GitHub Actions workflow.
+Azure Pipelines is the only CI and CD system for this repository (decisions **P-13**, **P-14**). There is no GitHub Actions workflow. Standing assumptions (currency, region, SKUs, deferred work) are in [`docs/assumptions.md`](assumptions.md).
 
 One-time manual steps below are required before the first CD run. **Nothing else is manual** — after these exist, `azure-pipelines.yml` provisions, deploys, seeds, runs BDD and verifies without portal clicks.
 
