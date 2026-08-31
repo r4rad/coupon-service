@@ -59,6 +59,7 @@ Until the role assignment exists, the Coupon Service returns **403** on reservat
 |---|---|---|
 | `entraTenantId` | Bicep (defaults to `tenant().tenantId`) | Deployment tenant; override only for a different IdP |
 | `couponApiAudience` | Bicep param + `Authentication:Jwt:Audience` | `api://coupon-service` |
+| `couponApiClientId` | Bicep param + `Authentication:Jwt:ClientId` | `{coupon-api-client-id}`, printed by `scripts/setup-entra-app.ps1` |
 | Customer SPA client ID | this doc / pipeline vars | `{customer-spa-client-id}` |
 | Admin client ID | this doc / pipeline vars | `{admin-client-id}` |
 | Order MI client ID | Bicep output `orderIdentityClientId` | injected as `AZURE_CLIENT_ID` |
@@ -68,9 +69,26 @@ JwtBearer on the Coupon Service (defence in depth, **AC-7.6**):
 ```text
 Authentication__Jwt__Authority = https://login.microsoftonline.com/{tenant}/v2.0
 Authentication__Jwt__Audience  = api://coupon-service
+Authentication__Jwt__ClientId  = {coupon-api-client-id}
 Authentication__Jwt__Issuer    = https://login.microsoftonline.com/{tenant}/v2.0
 Authentication__TestToken__Enabled = false   # required outside Development/Test (AC-7.5)
 ```
+
+### Two accepted audiences, and why
+
+Version 2 access tokens always carry the **client id of the resource application** in `aud`; only version 1 tokens echo back the Application ID URI that the caller requested. Since the registration requests version 2 (see above), every real token — the SPA's delegated token, the Order API's managed-identity token, the pipeline's client-credentials token — arrives with the GUID.
+
+Confirmed against the live tenant with a client-credentials token:
+
+```text
+aud   : {coupon-api-client-id}          # not api://coupon-service
+iss   : https://login.microsoftonline.com/{tenant}/v2.0
+roles : Coupon.Redeem
+```
+
+So `api://coupon-service` remains the identifier callers *request* (`api://coupon-service/.default`), while the value that must *validate* is the client id. Both are accepted, in the application (`ValidAudiences`) and at the APIM edge (two `<audience>` entries fed by the `jwt-audience` and `jwt-client-id` named values), so neither token version is rejected and the readable URI stays the public contract.
+
+`couponApiClientId` is a Bicep parameter set in `main.*.bicepparam`. Leave it empty and Bicep falls back to the Application ID URI for the APIM audience, which is why a fresh tenant fails with 401 until `scripts/setup-entra-app.ps1` has run and the printed client id has been copied in.
 
 Order API managed-identity hop (**AC-7.7**):
 

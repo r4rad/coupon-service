@@ -102,6 +102,8 @@ Two details the script exists to get right:
 - **`requestedAccessTokenVersion` must be `2`.** `main.bicep` sets `jwtIssuer = jwtAuthority = https://login.microsoftonline.com/{tenantId}/v2.0`, and `JwtBearer` matches that issuer exactly. A registration left at the default version 1 issues tokens with `iss = https://sts.windows.net/{tenantId}/`, which fails validation as an indistinguishable 401.
 - **`Coupon.Admin` must allow member type `Application`.** A Users/Groups-only role cannot be assigned to a service principal, so the client-credentials token would carry no `roles` claim and the request would be rejected with 403.
 
+Then copy the printed client id into **`param couponApiClientId`** in `main.dev.bicepparam` and `main.prod.bicepparam`. Version 2 tokens carry that GUID in `aud` instead of the Application ID URI, so the API and the APIM edge both need it as a valid audience — see [`docs/authentication.md`](authentication.md#two-accepted-audiences-and-why). Skipping this step produces a 401 with a token that otherwise looks correct.
+
 If your tenant restricts identifier URIs to the `api://{appId}` form, re-run with `-Audience api://<appId>` and set `couponApiAudience` to the same value in `main.dev.bicepparam` / `main.prod.bicepparam`.
 
 Verify before re-running CD:
