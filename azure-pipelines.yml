@@ -341,55 +341,78 @@ stages:
           - download: current
             artifact: provision-outputs
 
-          - pwsh: |
-              $ErrorActionPreference = 'Stop'
-
-              function Get-ConfiguredUrl {
-                param([string] $Value)
-                if ([string]::IsNullOrWhiteSpace($Value)) { return $null }
-                # Undefined ADO macros can remain as literal $(Name) in some contexts.
-                if ($Value -match '^\$\([A-Za-z0-9_]+\)$') { return $null }
-                return $Value.Trim()
-              }
-
-              $outputsPath = Join-Path $env:PIPELINE_WORKSPACE 'provision-outputs/outputs.json'
-              $outputs = Get-Content -LiteralPath $outputsPath -Raw | ConvertFrom-Json
-
-              $base = Get-ConfiguredUrl -Value $env:ADMIN_API_BASE_URL
-              if ($null -eq $base) {
-                # Admin ops are on APIM path /admin (subscription required), not /coupons.
-                # CD seeds the Coupon Service backend with the Admin bearer (AC-9.5/9.6).
-                $base = Get-ConfiguredUrl -Value ([string]$outputs.couponBackendUrl.value)
-              }
-
-              if ($null -eq $base) {
-                throw 'Admin API base URL could not be resolved from AdminApiBaseUrl or couponBackendUrl.'
-              }
-
-              if ($base -match '/coupons/?$') {
-                throw "AdminApiBaseUrl points at the customer APIM path '/coupons' ($base). Use the Coupon Service backend URL, or APIM '/admin' with a subscription key."
-              }
-
-              $uri = $null
-              if (-not [Uri]::TryCreate($base, [UriKind]::Absolute, [ref]$uri) -or
-                  ($uri.Scheme -ne [Uri]::UriSchemeHttp -and $uri.Scheme -ne [Uri]::UriSchemeHttps)) {
-                throw "Admin API base URL is not an absolute http(s) URI: '$base'"
-              }
-
-              if ([string]::IsNullOrWhiteSpace($env:SEED_BEARER_TOKEN)) {
-                throw 'AdminApiBearerToken is empty; seed cannot authenticate to the admin API.'
-              }
-
-              Write-Host "Seeding against $base"
-              $scriptPath = Join-Path $env:BUILD_SOURCESDIRECTORY 'scripts/seed-policies.ps1'
-              & $scriptPath -BaseUrl $base -BearerToken $env:SEED_BEARER_TOKEN
+          - task: AzureCLI@2
             displayName: Seed policies via admin API (AC-9.5, AC-9.6)
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: pscore
+              scriptLocation: inlineScript
+              inlineScript: |
+                $ErrorActionPreference = 'Stop'
+
+                function Get-ConfiguredValue {
+                  param([string] $Value)
+                  if ([string]::IsNullOrWhiteSpace($Value)) { return $null }
+                  if ($Value -match '^\$\([A-Za-z0-9_]+\)$') { return $null }
+                  return $Value.Trim()
+                }
+
+                $outputsPath = Join-Path $env:PIPELINE_WORKSPACE 'provision-outputs/outputs.json'
+                $outputs = Get-Content -LiteralPath $outputsPath -Raw | ConvertFrom-Json
+
+                $base = Get-ConfiguredValue -Value $env:ADMIN_API_BASE_URL
+                if ($null -eq $base) {
+                  # Admin ops are on APIM path /admin (subscription required), not /coupons.
+                  # CD seeds the Coupon Service backend (AC-9.5/9.6).
+                  $base = Get-ConfiguredValue -Value ([string]$outputs.couponBackendUrl.value)
+                }
+
+                if ($null -eq $base) {
+                  throw 'Admin API base URL could not be resolved from AdminApiBaseUrl or couponBackendUrl.'
+                }
+
+                if ($base -match '/coupons/?$') {
+                  throw "AdminApiBaseUrl points at the customer APIM path '/coupons' ($base). Use the Coupon Service backend URL, or APIM '/admin' with a subscription key."
+                }
+
+                $uri = $null
+                if (-not [Uri]::TryCreate($base, [UriKind]::Absolute, [ref]$uri) -or
+                    ($uri.Scheme -ne [Uri]::UriSchemeHttp -and $uri.Scheme -ne [Uri]::UriSchemeHttps)) {
+                  throw "Admin API base URL is not an absolute http(s) URI: '$base'"
+                }
+
+                $audience = Get-ConfiguredValue -Value ([string]$outputs.couponApiAudience.value)
+                if ($null -eq $audience) {
+                  $audience = 'api://coupon-service'
+                }
+
+                $token = $null
+                $tokenSource = 'none'
+                $azToken = az account get-access-token --resource $audience --query accessToken -o tsv 2>$null
+                if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($azToken)) {
+                  $token = $azToken.Trim()
+                  $tokenSource = "WIF az account get-access-token --resource $audience"
+                }
+
+                if ($null -eq $token) {
+                  $token = Get-ConfiguredValue -Value $env:ADMIN_API_BEARER_TOKEN
+                  if ($null -ne $token) {
+                    $tokenSource = 'AdminApiBearerToken pipeline variable'
+                  }
+                }
+
+                if ($null -eq $token) {
+                  throw "Could not obtain an admin bearer token. Assign app role Coupon.Admin on $audience to the pipeline WIF service principal, or set AdminApiBearerToken to a non-expired Entra JWT with roles=Coupon.Admin. Test tokens are rejected when Authentication__TestToken__Enabled=false."
+                }
+
+                Write-Host "Seeding against $base (token via $tokenSource)"
+                $scriptPath = Join-Path $env:BUILD_SOURCESDIRECTORY 'scripts/seed-policies.ps1'
+                & $scriptPath -BaseUrl $base -BearerToken $token
             env:
               PIPELINE_WORKSPACE: $(Pipeline.Workspace)
               BUILD_SOURCESDIRECTORY: $(Build.SourcesDirectory)
               ADMIN_API_BASE_URL: $(AdminApiBaseUrl)
-              SEED_BEARER_TOKEN: $(AdminApiBearerToken)
-
+              ADMIN_API_BEARER_TOKEN: $(AdminApiBearerToken)
   # --- 7 BDD (CD only) ---
   - stage: Bdd
     displayName: '7 BDD'

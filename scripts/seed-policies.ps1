@@ -222,7 +222,11 @@ function Invoke-AdminJson {
     $result = Invoke-RestMethod @params
     if ($AllowedStatusCodes -notcontains [int]$statusCode) {
         $detail = if ($null -eq $result) { '' } else { ($result | ConvertTo-Json -Compress -Depth 10) }
-        throw "Admin API $Method $Uri failed with HTTP $statusCode. $detail"
+        $hint = ''
+        if ([int]$statusCode -eq 401 -or [int]$statusCode -eq 403) {
+            $hint = ' Check Admin bearer: deployed hosts require an Entra JWT with roles=Coupon.Admin (TestToken is disabled).'
+        }
+        throw "Admin API $Method $Uri failed with HTTP $statusCode.$hint $detail"
     }
 
     return [pscustomobject]@{

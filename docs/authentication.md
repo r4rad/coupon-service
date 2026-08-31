@@ -79,6 +79,16 @@ OrderApi__CouponServiceScope     = api://coupon-service/.default
 
 Locally, leave `UseManagedIdentity` false and supply `OrderApi:CouponServiceToken` via user-secrets (test-token scheme on the Coupon Service).
 
+## Pipeline seed token (AC-9.5 / AC-9.6)
+
+CD Seed calls the Coupon Service **backend** (not APIM `/coupons`) and must present an Entra JWT with `roles` containing `Coupon.Admin`. The pipeline prefers:
+
+```text
+az account get-access-token --resource api://coupon-service
+```
+
+under the WIF service connection. Assign app role `Coupon.Admin` (Applications allowed) to that service principal — same Graph `appRoleAssignedTo` pattern as `Coupon.Redeem` for the Order API MI. A static `AdminApiBearerToken` variable is only a fallback; user JWTs expire and local TestTokens are rejected when `Authentication__TestToken__Enabled=false`.
+
 ## APIM edge (**AC-9.7**, **AC-7.6**)
 
 Policy XML lives under `infra/bicep/policies/`:
