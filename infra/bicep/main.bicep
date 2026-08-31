@@ -49,6 +49,9 @@ param couponApiAudience string = 'api://coupon-service'
 @description('Coupon Service app registration client id. Version 2 tokens carry this GUID in aud instead of the Application ID URI, so it must be a valid audience. Emitted by scripts/setup-entra-app.ps1.')
 param couponApiClientId string = ''
 
+@description('Seeds the deterministic policy set as the Coupon Service starts (AC-9.5, AC-9.6). The policy store is per-instance, so seeding belongs with the instance rather than in a pipeline step.')
+param seedPoliciesOnStartup bool = true
+
 @description('Allowed SPA origin for APIM CORS on the customer product.')
 param spaOrigin string = 'https://localhost:5173'
 
@@ -149,6 +152,7 @@ module containerapps 'modules/containerapps.bicep' = if (hostingMode == 'contain
     couponApiAudience: couponApiAudience
     couponApiClientId: couponApiClientId
     couponServiceScope: couponServiceScope
+    seedPoliciesOnStartup: seedPoliciesOnStartup
     tags: tags
   }
 }
@@ -168,6 +172,7 @@ module appservice 'modules/appservice.bicep' = if (hostingMode == 'appService') 
     couponApiAudience: couponApiAudience
     couponApiClientId: couponApiClientId
     couponServiceScope: couponServiceScope
+    seedPoliciesOnStartup: seedPoliciesOnStartup
     tags: tags
   }
 }
