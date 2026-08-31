@@ -48,7 +48,8 @@ internal static class AuthenticationServiceCollectionExtensions
                     ValidateIssuer = true,
                     ValidIssuer = authOptions.Jwt.Issuer,
                     ValidateAudience = true,
-                    ValidAudience = authOptions.Jwt.Audience,
+                    // Both shapes: v1 echoes the Application ID URI, v2 always sends the client id.
+                    ValidAudiences = authOptions.Jwt.ValidAudiences(),
                     RoleClaimType = "roles",
                 };
             });
