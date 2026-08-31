@@ -388,10 +388,16 @@ stages:
 
                 $token = $null
                 $tokenSource = 'none'
-                $azToken = az account get-access-token --resource $audience --query accessToken -o tsv 2>$null
-                if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($azToken)) {
-                  $token = $azToken.Trim()
+                $azOutput = (az account get-access-token --resource $audience --query accessToken -o tsv 2>&1 |
+                  ForEach-Object { $_.ToString() }) -join '; '
+                if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($azOutput)) {
+                  $token = $azOutput.Trim()
                   $tokenSource = "WIF az account get-access-token --resource $audience"
+                }
+                else {
+                  # Surface the Entra reason. Degrading silently to the fallback token reports a
+                  # missing app registration or role assignment as an opaque HTTP 401 from the backend.
+                  Write-Host "##vso[task.logissue type=warning]WIF token acquisition failed for $audience. Run scripts/setup-entra-app.ps1. Azure CLI said: $azOutput"
                 }
 
                 if ($null -eq $token) {
@@ -402,7 +408,7 @@ stages:
                 }
 
                 if ($null -eq $token) {
-                  throw "Could not obtain an admin bearer token. Assign app role Coupon.Admin on $audience to the pipeline WIF service principal, or set AdminApiBearerToken to a non-expired Entra JWT with roles=Coupon.Admin. Test tokens are rejected when Authentication__TestToken__Enabled=false."
+                  throw "Could not obtain an admin bearer token. Run scripts/setup-entra-app.ps1 to create the $audience app registration and assign app role Coupon.Admin to the pipeline WIF service principal, or set AdminApiBearerToken to a non-expired Entra JWT with roles=Coupon.Admin. Test tokens are rejected when Authentication__TestToken__Enabled=false."
                 }
 
                 Write-Host "Seeding against $base (token via $tokenSource)"
