@@ -41,6 +41,9 @@ param couponApiClientId string = ''
 @description('OAuth scope the Order API requests with managed identity (AC-7.7).')
 param couponServiceScope string
 
+@description('Seeds the deterministic policy set as the Coupon Service starts (AC-9.5, AC-9.6).')
+param seedPoliciesOnStartup bool = true
+
 @description('Resource tags. Must include project, env and owner.')
 param tags object
 
@@ -128,6 +131,10 @@ resource couponApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'Authentication__TestToken__Enabled'
               value: 'false'
+            }
+            {
+              name: 'Seeding__Enabled'
+              value: string(seedPoliciesOnStartup)
             }
           ]
         }

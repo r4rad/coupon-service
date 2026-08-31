@@ -223,41 +223,26 @@ public sealed class AzurePipelinesTests
     }
 
     [Fact]
-    public void Seed_stage_invokes_the_idempotent_seed_script()
+    public void Seed_stage_verifies_the_startup_seed_without_holding_a_credential()
     {
-        // AC-9.5 — deployment completion seeds via scripts/seed-policies.ps1.
+        // AC-9.5 — the service seeds itself as it starts, so CD verifies through the anonymous
+        // readiness probe. No admin token means no Entra dependency in the deployment path.
         var yaml = ReadPipeline();
         var seedStart = yaml.IndexOf("- stage: Seed", StringComparison.Ordinal);
         var seedEnd = yaml.IndexOf("- stage: Bdd", StringComparison.Ordinal);
         var block = yaml[seedStart..seedEnd];
 
-        Assert.Contains("scripts/seed-policies.ps1", block, StringComparison.Ordinal);
-        Assert.Contains("AdminApiBearerToken", block, StringComparison.Ordinal);
-        Assert.Contains("get-access-token", block, StringComparison.Ordinal);
-        Assert.Contains("couponApiAudience", block, StringComparison.Ordinal);
-        Assert.Contains("AzureCLI@2", block, StringComparison.Ordinal);
+        Assert.Contains("/v1/health/ready", block, StringComparison.Ordinal);
         Assert.Contains("provision-outputs/outputs.json", block, StringComparison.Ordinal);
         Assert.Contains("couponBackendUrl", block, StringComparison.Ordinal);
         Assert.Contains("UriKind]::Absolute", block, StringComparison.Ordinal);
-        Assert.DoesNotContain("apim.TrimEnd('/') + '/coupons'", block, StringComparison.Ordinal);
-        Assert.DoesNotContain("SEED_BEARER_TOKEN", block, StringComparison.Ordinal);
+        Assert.Contains("src/CouponService.Api/Seeding/SeedPolicies.json", block, StringComparison.Ordinal);
+
+        Assert.DoesNotContain("get-access-token", block, StringComparison.Ordinal);
+        Assert.DoesNotContain("AdminApiBearerToken", block, StringComparison.Ordinal);
+        Assert.DoesNotContain("Authorization", block, StringComparison.Ordinal);
         Assert.DoesNotContain("arguments:", block, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("clientSecret", block, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public void Seed_stage_reports_why_wif_token_acquisition_failed_before_falling_back()
-    {
-        // A missing app registration or role assignment must not surface only as HTTP 401
-        // from the backend, which is indistinguishable from an expired fallback token.
-        var yaml = ReadPipeline();
-        var seedStart = yaml.IndexOf("- stage: Seed", StringComparison.Ordinal);
-        var seedEnd = yaml.IndexOf("- stage: Bdd", StringComparison.Ordinal);
-        var block = yaml[seedStart..seedEnd];
-
-        Assert.Contains("task.logissue", block, StringComparison.Ordinal);
-        Assert.Contains("setup-entra-app.ps1", block, StringComparison.Ordinal);
-        Assert.DoesNotContain("-o tsv 2>$null", block, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -281,35 +266,46 @@ public sealed class AzurePipelinesTests
     [Fact]
     public void Seed_script_upserts_the_deterministic_policy_set_idempotently()
     {
-        // AC-9.5 / AC-9.6 — admin API upsert; re-run converges without manual cleanup.
+        // AC-9.5 / AC-9.6 — admin API upsert; re-run converges without manual cleanup. The script
+        // remains the manual path; CD relies on the application's startup seeder.
         Assert.True(File.Exists(Path.Combine(RepoRoot, "scripts", "seed-policies.ps1")));
         var script = ReadSeedScript();
 
-        string[] codes =
-        [
-            "SAVE10",
-            "FLAT5",
-            "VEGGIE15",
-            "BOGO",
-            "EITHER",
-            "OLDCODE",
-            "LIMITED1",
-        ];
-
-        foreach (var code in codes)
-        {
-            Assert.Contains(code, script, StringComparison.Ordinal);
-        }
-
-        Assert.Contains("automatic", script, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Tuesday", script, StringComparison.Ordinal);
         Assert.Contains("/v1/admin/policies", script, StringComparison.Ordinal);
         Assert.Contains("If-Match", script, StringComparison.Ordinal);
         Assert.Contains("Invoke-RestMethod", script, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Post", script, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Put", script, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Get", script, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("404", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_deterministic_policy_set_has_one_definition_shared_by_script_and_application()
+    {
+        // Two copies of the seed set drift silently, and the drift only shows up as a demo that
+        // behaves differently depending on which path seeded it.
+        var seedFile = Path.Combine(RepoRoot, "src", "CouponService.Api", "Seeding", "SeedPolicies.json");
+        Assert.True(File.Exists(seedFile));
+        var seed = File.ReadAllText(seedFile);
+
+        string[] codes = ["SAVE10", "FLAT5", "VEGGIE15", "BOGO", "EITHER", "OLDCODE", "LIMITED1"];
+        foreach (var code in codes)
+        {
+            Assert.Contains(code, seed, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("automatic", seed, StringComparison.Ordinal);
+        Assert.Contains("Tuesday", seed, StringComparison.Ordinal);
+
+        var script = ReadSeedScript();
+        Assert.Contains("src/CouponService.Api/Seeding/SeedPolicies.json", script, StringComparison.Ordinal);
+        foreach (var code in codes)
+        {
+            Assert.DoesNotContain(code, script, StringComparison.Ordinal);
+        }
+
+        var csproj = File.ReadAllText(Path.Combine(RepoRoot, "src", "CouponService.Api", "CouponService.Api.csproj"));
+        Assert.Contains("Seeding\\SeedPolicies.json", csproj, StringComparison.Ordinal);
     }
 
     [Fact]

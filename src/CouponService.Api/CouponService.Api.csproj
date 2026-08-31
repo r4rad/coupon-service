@@ -26,4 +26,9 @@
     <ProjectReference Include="..\CouponService.Infrastructure\CouponService.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Shared with scripts/seed-policies.ps1, which reads the same file from the repository. -->
+    <EmbeddedResource Include="Seeding\SeedPolicies.json" />
+  </ItemGroup>
+
 </Project>
