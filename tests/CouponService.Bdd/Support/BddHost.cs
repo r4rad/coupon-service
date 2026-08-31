@@ -224,9 +224,10 @@ public sealed class BddHost : IAsyncDisposable
 
     private static HttpClient CreateExternalClient(string baseUrl)
     {
-        var client = new HttpClient
+        var baseAddress = new Uri(baseUrl.TrimEnd('/') + "/", UriKind.Absolute);
+        var client = new HttpClient(new BasePathHandler(baseAddress, new HttpClientHandler()))
         {
-            BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/"),
+            BaseAddress = baseAddress,
             Timeout = TimeSpan.FromSeconds(30),
         };
         return client;
