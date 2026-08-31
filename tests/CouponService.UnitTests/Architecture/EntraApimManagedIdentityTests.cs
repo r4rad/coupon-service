@@ -55,6 +55,47 @@ public sealed class EntraApimManagedIdentityTests
     }
 
     [Fact]
+    public void The_client_id_audience_of_version_2_tokens_is_accepted_everywhere_a_token_is_checked()
+    {
+        // A v2 token's aud is the resource client id, not the Application ID URI, so pinning a
+        // single audience rejects every real caller. Behaviour of the list itself is covered by
+        // CouponService.ApiTests JwtAudienceTests; this pins the wiring that supplies it.
+        var auth = Read(Path.Combine(
+            "src",
+            "CouponService.Api",
+            "Authentication",
+            "AuthenticationServiceCollectionExtensions.cs"));
+        Assert.Contains("ValidAudiences = authOptions.Jwt.ValidAudiences()", auth, StringComparison.Ordinal);
+
+        var containerApps = Read(Path.Combine("infra", "bicep", "modules", "containerapps.bicep"));
+        Assert.Contains("Authentication__Jwt__ClientId", containerApps, StringComparison.Ordinal);
+
+        var appService = Read(Path.Combine("infra", "bicep", "modules", "appservice.bicep"));
+        Assert.Contains("Authentication__Jwt__ClientId", appService, StringComparison.Ordinal);
+
+        // APIM cannot conditionally omit an <audience>, so main.bicep substitutes the URI.
+        var main = Read(Path.Combine("infra", "bicep", "main.bicep"));
+        Assert.Contains("param couponApiClientId string", main, StringComparison.Ordinal);
+        Assert.Contains("empty(couponApiClientId) ? couponApiAudience : couponApiClientId", main, StringComparison.Ordinal);
+
+        foreach (var policy in new[] { "customer-product.xml", "admin-product.xml" })
+        {
+            var xml = Read(Path.Combine("infra", "bicep", "policies", policy));
+            Assert.Contains("{{jwt-audience}}", xml, StringComparison.Ordinal);
+            Assert.Contains("{{jwt-client-id}}", xml, StringComparison.Ordinal);
+        }
+
+        var apimApi = Read(Path.Combine("infra", "bicep", "modules", "apim-api.bicep"));
+        Assert.Contains("name: 'jwt-client-id'", apimApi, StringComparison.Ordinal);
+
+        foreach (var paramFile in new[] { "main.dev.bicepparam", "main.prod.bicepparam" })
+        {
+            var parameters = Read(Path.Combine("infra", "bicep", paramFile));
+            Assert.Contains("param couponApiClientId = '", parameters, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public void Order_api_uses_managed_identity_token_provider_without_a_shared_secret()
     {
         // AC-7.7 — MI hop; configuration token is only for local UseManagedIdentity=false.

@@ -289,10 +289,12 @@ else {
 
 Write-Step 'Summary'
 Write-Host "  couponApiAudience : $Audience"
-Write-Host "  application appId : $($app.appId)"
+Write-Host "  couponApiClientId : $($app.appId)"
 Write-Host "  resource sp objId : $($sp.id)"
 Write-Host "  Coupon.Admin  role: $($roleIds['Coupon.Admin'])"
 Write-Host "  Coupon.Redeem role: $($roleIds['Coupon.Redeem'])"
 Write-Host ''
-Write-Host '  Verify with: az account get-access-token --resource ' -NoNewline
-Write-Host $Audience
+# Version 2 tokens carry the client id in aud, never the Application ID URI, so the templates
+# need both values. A stale couponApiClientId presents as a 401 with a valid-looking token.
+Write-Host "  Set 'param couponApiClientId' to $($app.appId) in infra/bicep/main.*.bicepparam."
+Write-Host "  Verify with: az account get-access-token --resource $Audience"

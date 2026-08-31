@@ -9,6 +9,7 @@
       <openid-config url="{{openid-config-url}}" />
       <audiences>
         <audience>{{jwt-audience}}</audience>
+        <audience>{{jwt-client-id}}</audience>
       </audiences>
       <issuers>
         <issuer>{{jwt-issuer}}</issuer>
