@@ -58,21 +58,53 @@ public sealed class AzurePipelinesTests
     }
 
     [Fact]
-    public void Bdd_stage_runs_reqnroll_through_the_apim_gateway_urls()
+    public void Smoke_stage_verifies_the_deployment_through_the_apim_gateway_urls()
     {
-        // AC-10.1 / CS-29 — post-deploy BDD targets APIM /coupons and /orders, not only in-process hosts.
+        // The deployed stack has no controllable clock and no admin write path, so this stage
+        // smokes the deployment through APIM /coupons and /orders. The Reqnroll scenarios that
+        // need those affordances run in process in the Test stage (AC-10.1).
         var yaml = ReadPipeline();
-        var bddStart = yaml.IndexOf("- stage: Bdd", StringComparison.Ordinal);
-        var bddEnd = yaml.IndexOf("- stage: Verify", StringComparison.Ordinal);
-        var block = yaml[bddStart..bddEnd];
+        var smokeStart = yaml.IndexOf("- stage: Smoke", StringComparison.Ordinal);
+        var smokeEnd = yaml.IndexOf("- stage: Verify", StringComparison.Ordinal);
+        var block = yaml[smokeStart..smokeEnd];
 
-        Assert.Contains("tests/CouponService.Bdd/CouponService.Bdd.csproj", block, StringComparison.Ordinal);
-        Assert.Contains("BDD_Bdd__Mode: Http", block, StringComparison.Ordinal);
+        Assert.Contains("scripts/smoke-deployed-stack.ps1", block, StringComparison.Ordinal);
         Assert.Contains("apimGatewayUrl", block, StringComparison.Ordinal);
         Assert.Contains("/coupons", block, StringComparison.Ordinal);
         Assert.Contains("/orders", block, StringComparison.Ordinal);
-        Assert.Contains("BDD_Bdd__CouponServiceBaseUrl", block, StringComparison.Ordinal);
-        Assert.Contains("BDD_Bdd__OrderApiBaseUrl", block, StringComparison.Ordinal);
+
+        // Only the service connection can mint the Entra token the authenticated check needs.
+        Assert.Contains("azureSubscription: $(azureServiceConnection)", block, StringComparison.Ordinal);
+        Assert.Contains("couponApiAudience", block, StringComparison.Ordinal);
+
+        // A test token cannot survive APIM validate-jwt, and the deployed app disables the scheme.
+        Assert.DoesNotContain("TokenStrategy", block, StringComparison.Ordinal);
+        Assert.DoesNotContain("BDD_Bdd__Mode", block, StringComparison.Ordinal);
+        Assert.DoesNotContain("CouponService.Bdd.csproj", block, StringComparison.Ordinal);
+        Assert.DoesNotContain("arguments:", block, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void The_smoke_script_asserts_money_and_not_only_status_codes()
+    {
+        // A routing check that never looks at the discount would pass against a stack whose
+        // seeded policies had silently failed to load.
+        var script = File.ReadAllText(Path.Combine(RepoRoot, "scripts", "smoke-deployed-stack.ps1"));
+
+        Assert.Contains("/v1/health/live", script, StringComparison.Ordinal);
+        Assert.Contains("/v1/health/ready", script, StringComparison.Ordinal);
+        Assert.Contains("/v1/coupons/preview", script, StringComparison.Ordinal);
+        Assert.Contains("SAVE10", script, StringComparison.Ordinal);
+        Assert.Contains("get-access-token", script, StringComparison.Ordinal);
+
+        // The unauthenticated calls must be asserted as rejected, not merely attempted.
+        Assert.Contains("-Expected 401", script, StringComparison.Ordinal);
+        Assert.Contains("-Expected 200", script, StringComparison.Ordinal);
+
+        // Discount on a 40.00 basket under a 10 percent seeded policy.
+        Assert.Contains("[decimal] 4.00", script, StringComparison.Ordinal);
+        Assert.Contains("[decimal] 36.00", script, StringComparison.Ordinal);
+        Assert.Contains("'Applied'", script, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -88,7 +120,7 @@ public sealed class AzurePipelinesTests
             "- stage: Provision",
             "- stage: Deploy",
             "- stage: Seed",
-            "- stage: Bdd",
+            "- stage: Smoke",
             "- stage: Verify",
         ];
 
@@ -118,7 +150,7 @@ public sealed class AzurePipelinesTests
         Assert.DoesNotContain("${{ elseif", yaml, StringComparison.Ordinal);
         Assert.Contains("$[iif(", yaml, StringComparison.Ordinal);
 
-        foreach (var stage in new[] { "Package", "Provision", "Deploy", "Seed", "Bdd", "Verify" })
+        foreach (var stage in new[] { "Package", "Provision", "Deploy", "Seed", "Smoke", "Verify" })
         {
             var marker = $"- stage: {stage}";
             var start = yaml.IndexOf(marker, StringComparison.Ordinal);
@@ -229,7 +261,7 @@ public sealed class AzurePipelinesTests
         // readiness probe. No admin token means no Entra dependency in the deployment path.
         var yaml = ReadPipeline();
         var seedStart = yaml.IndexOf("- stage: Seed", StringComparison.Ordinal);
-        var seedEnd = yaml.IndexOf("- stage: Bdd", StringComparison.Ordinal);
+        var seedEnd = yaml.IndexOf("- stage: Smoke", StringComparison.Ordinal);
         var block = yaml[seedStart..seedEnd];
 
         Assert.Contains("/v1/health/ready", block, StringComparison.Ordinal);

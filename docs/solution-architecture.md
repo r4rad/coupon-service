@@ -12,7 +12,7 @@ Coupon support for the pizza ordering platform.
 | **Hosting** | Azure Container Apps, App Service F1 as strict zero-cost fallback |
 | **IaC / CI** | Bicep + Azure DevOps multi-stage YAML |
 | **Logging** | Serilog → Application Insights + Log Analytics |
-| **Tests** | xUnit + FluentAssertions in CI, Reqnroll BDD post-deploy |
+| **Tests** | xUnit + FluentAssertions + Reqnroll BDD in CI, deployed-stack smoke post-deploy |
 
 ---
 
@@ -58,7 +58,7 @@ flowchart LR
 | APIM as the only public entry point, JWT + rate limiting | Kitchen, delivery, inventory, order tracking |
 | Cosmos DB with a partitioning and concurrency design | Manual portal configuration as a deployment method |
 | Bicep + pipeline provisioning from an empty resource group | |
-| xUnit in CI, Reqnroll BDD against the deployed stack | |
+| xUnit and Reqnroll BDD in CI, smoke against the deployed stack | |
 | Serilog, correlation across hops, alerts, stated SLO | |
 
 ---
@@ -1008,14 +1008,14 @@ flowchart LR
     S3["3 PACKAGE<br/>images, OpenAPI,<br/>SPA bundle"]
     S4["4 PROVISION<br/>Bicep what-if<br/>published, then create"]
     S5["5 DEPLOY<br/>images, SPA,<br/>APIM import + policies"]
-    S6["6 SEED<br/>deterministic policies<br/>idempotent"]
-    S7["7 BDD<br/>Reqnroll through APIM,<br/>run-scoped data"]
-    S8["8 VERIFY<br/>smoke, results,<br/>optional teardown"]
+    S6["6 SEED<br/>verify the startup seed<br/>through readiness"]
+    S7["7 SMOKE<br/>health, gateway auth,<br/>seeded policy through APIM"]
+    S8["8 VERIFY<br/>backend health, results,<br/>optional teardown"]
 
     S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> S8
     S2 -.->|"fail"| X1["FAILS - nothing deployed"]
     S5 -.->|"readiness probe must pass"| S6
-    S7 -.->|"any scenario fails"| X2["Stage fails, environment flagged"]
+    S7 -.->|"any check fails"| X2["Stage fails, environment flagged"]
 ```
 
 Azure authentication uses a **workload-identity federated** service connection — no long-lived secret in the pipeline (P-13, AC-9.3). Rollback is a previous-revision redeploy for services and a previous-template run for infrastructure.
@@ -1039,12 +1039,19 @@ flowchart TB
         U5["API contract, WebApplicationFactory<br/>400 / 401 / 403"]
         U0 --> U1 --> U2 --> U3 --> U4 --> U5
     end
-    subgraph post ["STAGE 2 - post-deploy, real stack"]
-        B1["Reqnroll BDD through APIM"] --> B2["Auth negative paths"]
+    subgraph bdd ["STAGE 1b - CI, in process, controllable clock"]
+        B1["Reqnroll BDD, WebApplicationFactory"] --> B2["Auth negative paths"]
         B2 --> B3["Reserve/confirm/release round trip"] --> B4["Concurrency: two reservations, one wins"]
     end
+    subgraph post ["STAGE 2 - post-deploy, real stack"]
+        P1["Health anonymous and healthy"] --> P2["Readiness proves the startup seed"]
+        P2 --> P3["Unauthenticated calls rejected at the gateway"] --> P4["Seeded policy prices a basket end to end"]
+    end
     U5 --> B1
+    B4 --> P1
 ```
+
+**Where each suite runs, and why.** The Reqnroll scenarios drive a `MutableClock` and seed run-scoped policies through the admin API. A deployed service exposes neither — `Clock.Advance` moves a clock nothing observes, and a hardened gateway rightly refuses an unauthenticated admin write — so they run **in process** in the Test stage. Post-deploy, the pipeline verifies the deployment rather than re-verifying behaviour: that it serves, that the startup seed converged, that the gateway rejects anonymous callers, and that a seeded policy still prices a basket correctly through APIM. See `.kiro/specs/deployed-stack-smoke/bugfix.md`.
 
 **Test data isolation** — the fix for the sample's flakiest area. Its scenarios expect `LIMITED10` to be at its cap in live Cosmos; run the pipeline twice and "limit exceeded" and "limit not reached" contradict each other. Our run generates a prefix (`RUN7F3A_`), seeds exactly the policies it needs via the admin API, runs against those only, and deletes them in teardown. Repeatable and parallel-safe.
 
@@ -1163,7 +1170,7 @@ azure-pipelines.yml
 | 18 | Rejections are `200` with a reason | A rejected coupon is a business outcome; one contract clients can code against | Mixed 400/404 per rejection type |
 | 19 | Fail closed on discount, fail open on order | An outage must not stop sales, nor grant unverified discounts | Failing checkout, or honouring the client's claim |
 | 20 | `decimal` for all money | Correctness outweighs speed; cost is negligible beside signature verification | `double` or scaled integers |
-| 21 | Run-scoped BDD test data | Post-deploy suite repeatable and parallel-safe | Fixed shared codes whose state drifts |
+| 21 | Run-scoped BDD test data | BDD suite repeatable and parallel-safe | Fixed shared codes whose state drifts |
 
 ---
 
@@ -1171,7 +1178,7 @@ azure-pipelines.yml
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| APIM and Container Apps cold starts | Slow first call, smoke tests time out | Generous post-deploy timeouts, readiness gate before BDD, documented as a tier characteristic |
+| APIM and Container Apps cold starts | Slow first call, smoke tests time out | Generous post-deploy timeouts, readiness gate before the smoke stage, documented as a tier characteristic |
 | Cosmos free tier already used | Provisioning fails | Parameter switches to serverless, negligible at demo volume |
 | Container Registry is not free | Small monthly charge | Public registry or App Service fallback; flagged before provisioning |
 | Subscription has a spending limit | APIM or Cosmos cannot be created | Confirm the offer before the first run; pipeline fails fast with a clear message |
@@ -1187,7 +1194,7 @@ azure-pipelines.yml
 1. **Engine** — grammar, parser, validator, compiler, effects, unit and property tests.
 2. **Persistence and lifecycle** — Cosmos model, reserve/confirm/release, admin API, simulate and shadow.
 3. **Edges** — auth, APIM, Order API, contract tests.
-4. **Automation** — Bicep, pipeline, seeding, post-deploy BDD.
+4. **Automation** — Bicep, pipeline, startup seeding, post-deploy smoke.
 5. **Frontend**, then **docs, alerts and walkthrough**.
 
 Waves 1 and 2 need no Azure access, so implementation can start immediately; the environment is only required from wave 3.

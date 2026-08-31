@@ -23,7 +23,7 @@ Ticket branches are created from the latest `develop` and open pull requests aga
 
 ### Empty resource group → green pipeline (AC-9.1)
 
-After [`docs/pipeline-prerequisites.md`](pipeline-prerequisites.md) is satisfied, a merge to `develop` or `main` runs the same eight stages in [`azure-pipelines.yml`](../azure-pipelines.yml): **Build** → **Test** → **Package** → **Provision** (what-if artifact, then apply) → **Deploy** (ACR images, Container App update, readiness probe) → **Seed** (idempotent admin API) → **BDD** (Reqnroll through APIM) → **Verify**. No portal configuration of individual resources is required between stages.
+After [`docs/pipeline-prerequisites.md`](pipeline-prerequisites.md) is satisfied, a merge to `develop` or `main` runs the same eight stages in [`azure-pipelines.yml`](../azure-pipelines.yml): **Build** → **Test** → **Package** → **Provision** (what-if artifact, then apply) → **Deploy** (ACR images, Container App update, readiness probe) → **Seed** (verify the startup seed through readiness) → **Smoke** (health, gateway auth and a seeded policy through APIM) → **Verify**. No portal configuration of individual resources is required between stages.
 
 The WIF service principal needs **Contributor** and **User Access Administrator** on both RGs (Key Vault `roleAssignments/write`), plus **AcrPush** on each ACR after first provision. See `docs/pipeline-prerequisites.md`.
 
@@ -109,7 +109,11 @@ az deployment group create `
 
 Both Container Apps start on `mcr.microsoft.com/k8se/quickstart:latest` so the first provision into an empty registry does not deadlock. The Deploy stage builds `src/CouponService.Api/Dockerfile` and `src/OrderApi/Dockerfile` on the agent (`docker build` / `docker push` after `az acr login`), updates the Container App revisions, then probes `/v1/health/ready` before Seed. This subscription rejects ACR Tasks (`TasksOperationsNotAllowed`), so the pipeline must not use `az acr build`.
 
-Post-deploy BDD (stage 7) targets the APIM gateway URLs (`…/coupons`, `…/orders`) from provision outputs unless `AdminApiBaseUrl` / `OrderApiBaseUrl` override them.
+## What the post-deploy stage does and does not prove (stage 7)
+
+Stage 7 smokes the deployment through the APIM gateway URLs (`…/coupons`, `…/orders`) taken from provision outputs, unless `SmokeCouponBaseUrl` / `SmokeOrderBaseUrl` override them. [`scripts/smoke-deployed-stack.ps1`](../scripts/smoke-deployed-stack.ps1) asserts that health is anonymous and healthy, that readiness reports the startup seed converged, that an unauthenticated preview and an unauthenticated pizza list are both rejected with 401, and that a preview carrying a real Entra token discounts a 40.00 basket by exactly 4.00 under the seeded `SAVE10` policy. The token comes from the pipeline's federated identity, so `AzureCLI@2` — not `pwsh` — runs the step.
+
+It does **not** re-run the Reqnroll scenarios. Those drive a `MutableClock` and create run-scoped policies through the admin API, and a deployed service offers neither: `Clock.Advance` would move a clock nothing observes, and one scenario asserts the local day is Tuesday. They run in process in the **Test** stage instead, which is what AC-10.1 and AC-10.4 ask for. [`.kiro/specs/deployed-stack-smoke/bugfix.md`](../.kiro/specs/deployed-stack-smoke/bugfix.md) records the measurements behind that split.
 
 ## Tear down
 
