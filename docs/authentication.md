@@ -16,13 +16,18 @@ Create three app registrations in the demo tenant. Record the IDs below; put any
 
 ### 1. Coupon Service API (resource)
 
+Applied by [`scripts/setup-entra-app.ps1`](../scripts/setup-entra-app.ps1) rather than by hand — see [`docs/pipeline-prerequisites.md`](pipeline-prerequisites.md) section 4.
+
 - Application ID URI / audience: `api://coupon-service` (override with Bicep `couponApiAudience` if needed).
-- App roles (application permission type):
+- `api.requestedAccessTokenVersion` = **2**. `JwtBearer` matches `ValidIssuer` exactly against the v2 authority, so a version 1 registration issues `iss = https://sts.windows.net/{tenant}/` and every call fails with 401.
+- App roles:
 
 | Value | Description | Allowed member types |
 |---|---|---|
 | `Coupon.Redeem` | Reserve, confirm, release | Applications |
-| `Coupon.Admin` | Policy administration | Users/Groups (and optionally Applications) |
+| `Coupon.Admin` | Policy administration | Applications and Users |
+
+`Coupon.Admin` includes `Application` so the CD pipeline's service principal can hold it; a Users-only role cannot be assigned to a service principal and the resulting token carries no `roles` claim.
 
 - Expose the API; keep the Application ID URI stable so APIM and JwtBearer stay aligned.
 
@@ -87,7 +92,9 @@ CD Seed calls the Coupon Service **backend** (not APIM `/coupons`) and must pres
 az account get-access-token --resource api://coupon-service
 ```
 
-under the WIF service connection. Assign app role `Coupon.Admin` (Applications allowed) to that service principal — same Graph `appRoleAssignedTo` pattern as `Coupon.Redeem` for the Order API MI. A static `AdminApiBearerToken` variable is only a fallback; user JWTs expire and local TestTokens are rejected when `Authentication__TestToken__Enabled=false`.
+under the WIF service connection. Assign app role `Coupon.Admin` (Applications allowed) to that service principal — same Graph `appRoleAssignedTo` pattern as `Coupon.Redeem` for the Order API MI. `scripts/setup-entra-app.ps1 -AdminPrincipalId <wif-sp-object-id>` does both. A static `AdminApiBearerToken` variable is only a fallback; user JWTs expire and local TestTokens are rejected when `Authentication__TestToken__Enabled=false`.
+
+When acquisition fails the Seed step logs an Azure Pipelines warning quoting the Entra error before it falls back, so a missing registration (`AADSTS500011`) is distinguishable from a missing role assignment.
 
 ## APIM edge (**AC-9.7**, **AC-7.6**)
 

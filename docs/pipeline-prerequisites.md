@@ -82,9 +82,33 @@ Observed on this subscription (**not** merely one-per-region):
 | Zero App Service VMs | `SubscriptionIsOverQuotaForSku` | The App Service F1 fallback cannot run here |
 
 `main.dev.bicepparam` / develop CD owns the single CAE slot (`cae-coupon-dev` in eastus2). `main.prod.bicepparam` still sets `hostingMode = containerApps` and `containerAppsLocation = 'eastus'` (P-14) so a quota increase or a second subscription unlocks production without another template change — until then, **prod provision fails** while the non-prod CAE exists. `main.demo.bicepparam` also targets `containerApps` (`cae-coupon-demo`) — do not run it against `rg-coupon-demo`, or it fights the develop pipeline for the same global slot.
-## 4. Entra app registration permission
+## 4. Entra app registration
 
-Grant permission to create or configure the Entra app registrations the demo needs (JWT validation and managed-identity role assignment). Wave 8 (**CS-28**) applies those registrations; the operator who wired the service connection completes that Entra work when requested.
+The Coupon Service API app registration must exist before CD Seed, APIM `validate-jwt` (**AC-7.6**) or the Order API managed-identity hop (**AC-7.7**) can work. Without it, `az account get-access-token --resource api://coupon-service` fails with `AADSTS500011: The resource principal ... was not found in the tenant`, and Seed falls through to the `AdminApiBearerToken` fallback and returns **401**.
+
+Run [`scripts/setup-entra-app.ps1`](../scripts/setup-entra-app.ps1) once per tenant, as an identity that may create app registrations and write `appRoleAssignedTo`. It is idempotent, so re-running it converges rather than duplicating:
+
+```powershell
+# Object id (not app id) of the service principal behind the coupon-demo-wif connection:
+$wifSp = az ad sp show --id <service-connection-appId> --query id -o tsv
+./scripts/setup-entra-app.ps1 -AdminPrincipalId $wifSp -DryRun
+./scripts/setup-entra-app.ps1 -AdminPrincipalId $wifSp
+```
+
+It creates the application with identifier URI `api://coupon-service`, app roles `Coupon.Admin` and `Coupon.Redeem`, the resource service principal, and the `Coupon.Admin` assignment CD Seed needs. Pass `-RedeemPrincipalId` with the Order API managed identity's object id after the first provision to complete **AC-7.7**.
+
+Two details the script exists to get right:
+
+- **`requestedAccessTokenVersion` must be `2`.** `main.bicep` sets `jwtIssuer = jwtAuthority = https://login.microsoftonline.com/{tenantId}/v2.0`, and `JwtBearer` matches that issuer exactly. A registration left at the default version 1 issues tokens with `iss = https://sts.windows.net/{tenantId}/`, which fails validation as an indistinguishable 401.
+- **`Coupon.Admin` must allow member type `Application`.** A Users/Groups-only role cannot be assigned to a service principal, so the client-credentials token would carry no `roles` claim and the request would be rejected with 403.
+
+If your tenant restricts identifier URIs to the `api://{appId}` form, re-run with `-Audience api://<appId>` and set `couponApiAudience` to the same value in `main.dev.bicepparam` / `main.prod.bicepparam`.
+
+Verify before re-running CD:
+
+```powershell
+az account get-access-token --resource api://coupon-service --query accessToken -o tsv
+```
 
 ## 5. Globally unique names (Key Vault / APIM)
 
@@ -116,7 +140,7 @@ CD Seed runs `az account get-access-token --resource api://coupon-service` under
 1. App role `Coupon.Admin` with **allowed member types = Applications** (and/or Users/Groups).
 2. That role assigned to the **WIF service principal** used by `coupon-demo-wif` (Graph `appRoleAssignedTo`, same pattern as `Coupon.Redeem` for the Order API MI).
 
-Without that assignment, Seed returns **401 Unauthorized** against the Container App backend.
+Both are what `scripts/setup-entra-app.ps1` (section 4) applies. Without them, Seed logs a warning naming the Entra failure and then returns **401 Unauthorized** against the Container App backend.
 
 Branch → RG / param file mapping lives in `azure-pipelines.yml` after CS-29 so Manual runs can still override parameters if needed.
 
