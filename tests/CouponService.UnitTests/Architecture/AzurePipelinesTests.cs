@@ -232,7 +232,9 @@ public sealed class AzurePipelinesTests
         Assert.Contains("AdminApiBearerToken", block, StringComparison.Ordinal);
         Assert.Contains("SEED_BEARER_TOKEN", block, StringComparison.Ordinal);
         Assert.Contains("provision-outputs/outputs.json", block, StringComparison.Ordinal);
+        Assert.Contains("couponBackendUrl", block, StringComparison.Ordinal);
         Assert.Contains("UriKind]::Absolute", block, StringComparison.Ordinal);
+        Assert.DoesNotContain("apim.TrimEnd('/') + '/coupons'", block, StringComparison.Ordinal);
         Assert.DoesNotContain("arguments:", block, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("clientSecret", block, StringComparison.OrdinalIgnoreCase);
     }
@@ -268,6 +270,17 @@ public sealed class AzurePipelinesTests
         Assert.Contains("Post", script, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Put", script, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Get", script, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("404", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Seed_script_treats_http_404_as_missing_without_throwing()
+    {
+        // pwsh 7: SkipHttpErrorCheck + StatusCodeVariable — Exception.Response is unreliable.
+        var script = ReadSeedScript();
+        Assert.Contains("SkipHttpErrorCheck", script, StringComparison.Ordinal);
+        Assert.Contains("StatusCodeVariable", script, StringComparison.Ordinal);
+        Assert.Contains("AllowedStatusCodes", script, StringComparison.Ordinal);
         Assert.Contains("404", script, StringComparison.Ordinal);
     }
 

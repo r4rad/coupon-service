@@ -106,7 +106,7 @@ Set these on the pipeline (or a variable group). Values are not committed:
 | Variable | Secret? | Purpose |
 |---|---|---|
 | `AdminApiBearerToken` | yes | Admin-role bearer used by `scripts/seed-policies.ps1` |
-| `AdminApiBaseUrl` | no | Optional override for the coupon admin base URL (otherwise provision outputs / APIM) |
+| `AdminApiBaseUrl` | no | Optional override for seed: Coupon Service **backend** base URL (not APIM `/coupons`). Default is `couponBackendUrl` from provision outputs. Admin routes on APIM are under `/admin` and require a subscription key — CD seeds the backend instead. |
 | `OrderApiBaseUrl` | no | Optional override for Order API base URL used by post-deploy BDD |
 
 Branch → RG / param file mapping lives in `azure-pipelines.yml` after CS-29 so Manual runs can still override parameters if needed.

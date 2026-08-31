@@ -357,17 +357,17 @@ stages:
 
               $base = Get-ConfiguredUrl -Value $env:ADMIN_API_BASE_URL
               if ($null -eq $base) {
-                $apim = Get-ConfiguredUrl -Value ([string]$outputs.apimGatewayUrl.value)
-                if ($null -ne $apim) {
-                  $base = $apim.TrimEnd('/') + '/coupons'
-                }
-                else {
-                  $base = Get-ConfiguredUrl -Value ([string]$outputs.couponBackendUrl.value)
-                }
+                # Admin ops are on APIM path /admin (subscription required), not /coupons.
+                # CD seeds the Coupon Service backend with the Admin bearer (AC-9.5/9.6).
+                $base = Get-ConfiguredUrl -Value ([string]$outputs.couponBackendUrl.value)
               }
 
               if ($null -eq $base) {
-                throw 'Admin API base URL could not be resolved from AdminApiBaseUrl or provision outputs.'
+                throw 'Admin API base URL could not be resolved from AdminApiBaseUrl or couponBackendUrl.'
+              }
+
+              if ($base -match '/coupons/?$') {
+                throw "AdminApiBaseUrl points at the customer APIM path '/coupons' ($base). Use the Coupon Service backend URL, or APIM '/admin' with a subscription key."
               }
 
               $uri = $null

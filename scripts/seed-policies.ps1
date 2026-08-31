@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Seeds the deterministic demo policy set through the admin API.
 
@@ -7,7 +7,8 @@
     Safe to re-run; converges to the same Active documents without manual cleanup.
 
 .PARAMETER BaseUrl
-    Coupon Service base URL (direct backend or APIM /coupons path). No trailing slash required.
+    Coupon Service base URL (direct backend preferred for CD). No trailing slash required.
+    Do not use the customer APIM path `/coupons` — admin routes are not published there.
 
 .PARAMETER BearerToken
     Admin-role bearer token. Prefer passing from an ADO secret variable; never commit a real token.
@@ -192,7 +193,8 @@ function Invoke-AdminJson {
         [string] $Method,
         [string] $Uri,
         [string] $Body = $null,
-        [hashtable] $Headers = @{}
+        [hashtable] $Headers = @{},
+        [int[]] $AllowedStatusCodes = @(200, 201, 204)
     )
 
     $allHeaders = @{
@@ -202,18 +204,31 @@ function Invoke-AdminJson {
         $allHeaders[$key] = $Headers[$key]
     }
 
+    $statusCode = 0
     $params = @{
-        Method      = $Method
-        Uri         = $Uri
-        Headers     = $allHeaders
-        ContentType = 'application/json'
-        ErrorAction = 'Stop'
+        Method             = $Method
+        Uri                = $Uri
+        Headers            = $allHeaders
+        ContentType        = 'application/json'
+        ErrorAction        = 'Stop'
+        # pwsh 7: do not throw on 404/4xx so callers can branch on status (idempotent GET).
+        SkipHttpErrorCheck = $true
+        StatusCodeVariable = 'statusCode'
     }
     if ($null -ne $Body) {
         $params['Body'] = $Body
     }
 
-    return Invoke-RestMethod @params
+    $result = Invoke-RestMethod @params
+    if ($AllowedStatusCodes -notcontains [int]$statusCode) {
+        $detail = if ($null -eq $result) { '' } else { ($result | ConvertTo-Json -Compress -Depth 10) }
+        throw "Admin API $Method $Uri failed with HTTP $statusCode. $detail"
+    }
+
+    return [pscustomobject]@{
+        StatusCode = [int]$statusCode
+        Body       = $result
+    }
 }
 
 if ([string]::IsNullOrWhiteSpace($BaseUrl)) {
@@ -236,29 +251,29 @@ foreach ($policy in $policies) {
     $uri = "$root/v1/admin/policies/$([uri]::EscapeDataString($policyId))"
     $json = ConvertTo-PolicyJson -Policy $policy
 
-    $existing = $null
-    try {
-        $existing = Invoke-AdminJson -Method Get -Uri $uri
-    }
-    catch {
-        $response = $_.Exception.Response
-        if ($null -eq $response -or [int]$response.StatusCode -ne 404) {
-            throw
-        }
-    }
+    $get = Invoke-AdminJson -Method Get -Uri $uri -AllowedStatusCodes @(200, 404)
 
-    if ($null -eq $existing) {
+    if ([int]$get.StatusCode -eq 404) {
         $createUri = "$root/v1/admin/policies"
-        Invoke-AdminJson -Method Post -Uri $createUri -Body $json | Out-Null
+        Invoke-AdminJson -Method Post -Uri $createUri -Body $json -AllowedStatusCodes @(200, 201) | Out-Null
         Write-Host "Created policy $policyId"
         $created++
     }
     else {
-        $etag = [string]$existing.etag
-        if ([string]::IsNullOrWhiteSpace($etag)) {
-            throw "Admin GET for $policyId returned no etag; cannot PUT idempotently."
+        $existing = $get.Body
+        $etag = $null
+        if ($null -ne $existing) {
+            if ($existing.PSObject.Properties.Name -contains 'etag') {
+                $etag = [string]$existing.etag
+            }
+            elseif ($existing.PSObject.Properties.Name -contains 'eTag') {
+                $etag = [string]$existing.eTag
+            }
         }
-        Invoke-AdminJson -Method Put -Uri $uri -Body $json -Headers @{ 'If-Match' = $etag } | Out-Null
+        if ([string]::IsNullOrWhiteSpace($etag)) {
+            throw "Admin GET for $policyId returned HTTP 200 with no etag; cannot PUT idempotently."
+        }
+        Invoke-AdminJson -Method Put -Uri $uri -Body $json -Headers @{ 'If-Match' = $etag } -AllowedStatusCodes @(200) | Out-Null
         Write-Host "Updated policy $policyId"
         $updated++
     }
