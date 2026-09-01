@@ -55,6 +55,10 @@ variables:
     value: $[iif(ne(variables['resourceGroupOverride'], 'auto'), variables['resourceGroupOverride'], iif(eq(variables['Build.SourceBranch'], 'refs/heads/main'), 'rg-coupon-prod', 'rg-coupon-demo'))]
   - name: bicepParametersFile
     value: $[iif(ne(variables['bicepParametersOverride'], 'auto'), variables['bicepParametersOverride'], iif(eq(variables['Build.SourceBranch'], 'refs/heads/main'), 'infra/bicep/main.prod.bicepparam', 'infra/bicep/main.dev.bicepparam'))]
+  - name: sharedManagedEnvironmentResourceGroup
+    value: rg-coupon-demo
+  - name: sharedManagedEnvironmentName
+    value: cae-coupon-dev
 
 stages:
   # --- 1 BUILD ---
@@ -192,6 +196,26 @@ stages:
           vmImage: ubuntu-latest
         steps:
           - checkout: self
+
+          - task: AzureCLI@2
+            displayName: Verify shared Container Apps environment exists (prod)
+            condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -euo pipefail
+                # Prod reuses cae-coupon-dev from develop CD (MaxNumberOfGlobalEnvironmentsInSubExceeded).
+                if ! az containerapp env show \
+                  --resource-group "$(sharedManagedEnvironmentResourceGroup)" \
+                  --name "$(sharedManagedEnvironmentName)" \
+                  --query id -o tsv >/dev/null 2>&1; then
+                  echo "Prod attaches to $(sharedManagedEnvironmentName) in $(sharedManagedEnvironmentResourceGroup), but that environment was not found."
+                  echo "Run develop CD successfully before merging to main."
+                  exit 1
+                fi
+                echo "Shared CAE $(sharedManagedEnvironmentName) is present."
 
           - task: AzureCLI@2
             displayName: az deployment group what-if
