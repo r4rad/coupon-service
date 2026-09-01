@@ -41,7 +41,8 @@ public sealed class ManagedIdentityTokenProviderTests
             Assert.Equal("mi-access-token", token);
             Assert.NotNull(handler.LastRequest);
             Assert.Equal("test-identity-header", handler.LastRequest!.Headers.GetValues("X-IDENTITY-HEADER").Single());
-            Assert.Contains("scope=api%3A%2F%2Fcoupon-service%2F.default", handler.LastRequest.RequestUri!.Query, StringComparison.Ordinal);
+            Assert.Contains("resource=api%3A%2F%2Fcoupon-service%2F.default", handler.LastRequest.RequestUri!.Query, StringComparison.Ordinal);
+            Assert.DoesNotContain("scope=", handler.LastRequest.RequestUri.Query, StringComparison.Ordinal);
             Assert.Contains("client_id=order-mi-client-id", handler.LastRequest.RequestUri.Query, StringComparison.Ordinal);
             Assert.DoesNotContain("must-not-be-used", handler.LastRequest.RequestUri.ToString(), StringComparison.Ordinal);
         }

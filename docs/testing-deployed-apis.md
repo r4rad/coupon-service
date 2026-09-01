@@ -270,7 +270,7 @@ Loaded at startup in every deployed environment (`src/CouponService.Api/Seeding/
 | **404** on preview | URL missing `/coupons` prefix before `/v1/...` |
 | Preview **200** + `Rejected` | Business rule (try `SAVE10` with quantity 2 × €20) |
 | **400** on place order (`couponPolicy`) | Order API serializes `couponPolicy` as an integer enum (`0` = allow without discount, `1` = require discount) — omit the field to use the default |
-| Place order **500** with `couponCode` | Order API → Coupon Service reserve returned 403 — assign `Coupon.Redeem` to the Order API identity and ensure the app requests `api://coupon-service/.default` (not `resource=`) for the MI token |
+| Place order **500** with `couponCode` | Order API MI token failed — assign `Coupon.Redeem`, then ensure `OrderApi__CouponServiceScope` is `api://coupon-service/.default` and the identity endpoint is called with `resource=` (not `scope=`; Container Apps rejects `scope`) |
 | Place order fails (other) | `Coupon.Redeem` not assigned to Order API identity |
 | Admin **401/403** | Missing `Coupon.Admin` and/or APIM admin subscription key |
 | `consent_required` on token | Re-run `setup-entra-app.ps1` |
