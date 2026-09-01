@@ -6,8 +6,14 @@ param location string = 'westeurope'
 @description('Static Web Apps Free SKU region. May differ from location when SWA is unavailable there.')
 param staticWebAppLocation string = 'westeurope'
 
-@description('Container Apps environment region. Empty inherits location. Override only when the subscription one-CAE-per-region quota forces the environment into a second region (CS-29).')
+@description('Container Apps environment region. Empty inherits location. Override only when the subscription quota allows a dedicated second CAE in another region (CS-29).')
 param containerAppsLocation string = ''
+
+@description('Resource group of an existing Container Apps environment to reuse instead of creating one. Set with existingManagedEnvironmentName when the subscription global one-CAE quota is exhausted.')
+param existingManagedEnvironmentResourceGroup string = ''
+
+@description('Name of the existing Container Apps environment to reuse. Pair with existingManagedEnvironmentResourceGroup when prod shares the non-prod CAE.')
+param existingManagedEnvironmentName string = ''
 
 @description('Short environment label applied to names and the env tag.')
 param environmentName string = 'demo'
@@ -133,6 +139,11 @@ var couponServiceScope = '${couponApiAudience}/.default'
 // URI when the client id is unknown. That yields a duplicate audience rather than an empty one.
 var couponApiClientIdOrAudience = empty(couponApiClientId) ? couponApiAudience : couponApiClientId
 
+var reuseManagedEnvironment = !empty(existingManagedEnvironmentResourceGroup) && !empty(existingManagedEnvironmentName)
+var existingManagedEnvironmentResourceId = reuseManagedEnvironment
+  ? resourceId(existingManagedEnvironmentResourceGroup, 'Microsoft.App/managedEnvironments', existingManagedEnvironmentName)
+  : ''
+
 var containerAppsRegion = containerAppsLocation == '' ? location : containerAppsLocation
 
 module containerapps 'modules/containerapps.bicep' = if (hostingMode == 'containerApps') {
@@ -140,6 +151,7 @@ module containerapps 'modules/containerapps.bicep' = if (hostingMode == 'contain
   params: {
     location: containerAppsRegion
     environmentName: environmentName
+    existingManagedEnvironmentResourceId: existingManagedEnvironmentResourceId
     logAnalyticsWorkspaceName: observability.outputs.logAnalyticsName
     appInsightsConnectionString: observability.outputs.appInsightsConnectionString
     couponIdentityId: identity.outputs.couponIdentityId

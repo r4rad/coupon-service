@@ -4,6 +4,9 @@ param location string
 @description('Short environment name used in resource names.')
 param environmentName string
 
+@description('Full resource id of an existing managed environment. When set, CAE creation is skipped (subscription global one-CAE quota).')
+param existingManagedEnvironmentResourceId string = ''
+
 @description('Log Analytics workspace name used for Container Apps diagnostics.')
 param logAnalyticsWorkspaceName string
 
@@ -47,11 +50,19 @@ param seedPoliciesOnStartup bool = true
 @description('Resource tags. Must include project, env and owner.')
 param tags object
 
+var useExistingEnvironment = !empty(existingManagedEnvironmentResourceId)
+var existingEnvironmentParts = split(existingManagedEnvironmentResourceId, '/')
+
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = {
   name: logAnalyticsWorkspaceName
 }
 
-resource managedEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' = {
+resource existingManagedEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' existing = if (useExistingEnvironment) {
+  name: existingEnvironmentParts[8]
+  scope: resourceGroup(existingEnvironmentParts[2], existingEnvironmentParts[4])
+}
+
+resource managedEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' = if (!useExistingEnvironment) {
   name: 'cae-coupon-${environmentName}'
   location: location
   tags: tags
@@ -67,6 +78,8 @@ resource managedEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' = {
   }
 }
 
+var managedEnvironmentId = useExistingEnvironment ? existingManagedEnvironment.id : managedEnvironment.id
+
 resource couponApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: 'ca-coupon-api-${environmentName}'
   location: location
@@ -78,7 +91,7 @@ resource couponApp 'Microsoft.App/containerApps@2024-03-01' = {
     }
   }
   properties: {
-    managedEnvironmentId: managedEnvironment.id
+    managedEnvironmentId: managedEnvironmentId
     configuration: {
       ingress: {
         external: true
@@ -158,7 +171,7 @@ resource orderApp 'Microsoft.App/containerApps@2024-03-01' = {
     }
   }
   properties: {
-    managedEnvironmentId: managedEnvironment.id
+    managedEnvironmentId: managedEnvironmentId
     configuration: {
       ingress: {
         external: true
@@ -219,7 +232,7 @@ resource orderApp 'Microsoft.App/containerApps@2024-03-01' = {
   }
 }
 
-output environmentId string = managedEnvironment.id
+output environmentId string = managedEnvironmentId
 output couponAppFqdn string = couponApp.properties.configuration.ingress.fqdn
 output orderAppFqdn string = orderApp.properties.configuration.ingress.fqdn
 output couponAppName string = couponApp.name

@@ -36,16 +36,14 @@ public sealed class LiveProvisionTests
             Assert.Contains("param location = 'eastus2'", envParams, StringComparison.Ordinal);
             Assert.Contains("param staticWebAppLocation = 'eastus2'", envParams, StringComparison.Ordinal);
         }
-
-        // Both env params stay on Container Apps (P-14). This subscription's observed limit is
-        // one CAE globally (MaxNumberOfGlobalEnvironmentsInSubExceeded) plus zero App Service VMs,
-        // so prod still declares containerAppsLocation=eastus for when quota allows a second CAE.
         var devParams = Read(Path.Combine("infra", "bicep", "main.dev.bicepparam"));
         var prodParams = Read(Path.Combine("infra", "bicep", "main.prod.bicepparam"));
         Assert.Contains("param hostingMode = 'containerApps'", devParams, StringComparison.Ordinal);
         Assert.Contains("param hostingMode = 'containerApps'", prodParams, StringComparison.Ordinal);
-        Assert.DoesNotContain("param containerAppsLocation", devParams, StringComparison.Ordinal);
-        Assert.Contains("param containerAppsLocation = 'eastus'", prodParams, StringComparison.Ordinal);
+        Assert.DoesNotContain("param existingManagedEnvironmentResourceGroup", devParams, StringComparison.Ordinal);
+        Assert.Contains("param existingManagedEnvironmentResourceGroup = 'rg-coupon-demo'", prodParams, StringComparison.Ordinal);
+        Assert.Contains("param existingManagedEnvironmentName = 'cae-coupon-dev'", prodParams, StringComparison.Ordinal);
+        Assert.Contains("existingManagedEnvironmentResourceGroup", main, StringComparison.Ordinal);
         Assert.Contains("containerAppsLocation == '' ? location : containerAppsLocation", main, StringComparison.Ordinal);
     }
 
