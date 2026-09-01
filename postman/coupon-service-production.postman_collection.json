@@ -1,293 +1,657 @@
 {
+  "info": {
+    "name": "Coupon Service — Production (rg-coupon-prod)",
+    "description": "End-to-end tests for the **main / production** stack through Azure APIM.\r\n\r\n## Before you run\r\n\r\n1. Set **gatewayUrl** to your APIM gateway root (no trailing slash).\r\n   Discover: `az apim list -g rg-coupon-prod --query \"[0].gatewayUrl\" -o tsv`\r\n2. Acquire a token and paste into **bearerToken**:\r\n   `az account get-access-token --resource api://coupon-service --query accessToken -o tsv`\r\n3. (Optional admin folder) Set **adminSubscriptionKey** from APIM portal → Subscriptions → admin product.\r\n\r\n## Suggested order\r\n\r\nRun folder **1** → **2** (all coupon previews) → **3** (checkout scenarios). Use Collection Runner.\r\n\r\nFolder **4** is skipped automatically unless you set **adminSubscriptionKey**.\r\n\r\n**LIMITED1** preview may return **Rejected** on production after the global cap is consumed.\r\n\r\nPowerShell alternative: `./scripts/test-deployed-apis.ps1 -GatewayUrl <gatewayUrl>`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
   "variable": [
     {
-      "key": "gatewayUrl",
-      "value": "https://apim-coupon-prod-v29v5akqgmxy6.azure-api.net"
+      "value": "https://apim-coupon-prod-v29v5akqgmxy6.azure-api.net",
+      "key": "gatewayUrl"
     },
     {
-      "key": "bearerToken",
-      "value": ""
+      "value": "",
+      "key": "bearerToken"
     },
     {
-      "key": "orderId",
-      "value": ""
+      "value": "",
+      "key": "orderId"
     },
     {
-      "key": "tokenAudience",
-      "value": "api://coupon-service"
+      "value": "",
+      "key": "orderIdFlat5"
     },
     {
-      "key": "couponApiClientId",
-      "value": "189703ee-da8c-4fa4-8c0d-a53f193283f4"
+      "value": "",
+      "key": "orderIdBogo"
     },
     {
-      "key": "adminSubscriptionKey",
-      "value": ""
+      "value": "",
+      "key": "orderIdEither"
+    },
+    {
+      "value": "api://coupon-service",
+      "key": "tokenAudience"
+    },
+    {
+      "value": "189703ee-da8c-4fa4-8c0d-a53f193283f4",
+      "key": "couponApiClientId"
+    },
+    {
+      "value": "",
+      "key": "adminSubscriptionKey"
     }
   ],
   "auth": {
-    "type": "bearer",
     "bearer": [
       {
-        "key": "token",
         "type": "string",
+        "key": "token",
         "value": "{{bearerToken}}"
       }
-    ]
-  },
-  "info": {
-    "description": "End-to-end tests for the **main / production** stack through Azure APIM.\r\n\r\n## Before you run\r\n\r\n1. Set **gatewayUrl** to your APIM gateway root (no trailing slash).\r\n   Discover: `az apim list -g rg-coupon-prod --query \"[0].gatewayUrl\" -o tsv`\r\n2. Acquire a token and paste into **bearerToken**:\r\n   `az account get-access-token --resource api://coupon-service --query accessToken -o tsv`\r\n3. (Optional admin folder) Set **adminSubscriptionKey** from APIM portal → Subscriptions → admin product.\r\n\r\n## Suggested order\r\n\r\nRun folder **1** → **2** → **3** top to bottom. Use Collection Runner for a one-click E2E pass.\r\n\r\nPowerShell alternative: `./scripts/test-deployed-apis.ps1 -GatewayUrl <gatewayUrl>`",
-    "name": "Coupon Service — Production (rg-coupon-prod)",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    ],
+    "type": "bearer"
   },
   "item": [
     {
+      "name": "1 Health (no auth)",
+      "description": "Anonymous probes — run first.",
       "item": [
         {
-          "request": {
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "GET",
-            "url": "{{gatewayUrl}}/coupons/v1/health/live"
-          },
+          "name": "GET health/live",
+          "response": [],
+          "description": "Liveness.",
           "event": [
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status code is 200\", function () {",
                   "    pm.response.to.have.status(200);",
                   "});"
-                ]
+                ],
+                "type": "text/javascript"
               }
             }
           ],
-          "description": "Liveness.",
-          "response": [],
-          "name": "GET health/live"
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{gatewayUrl}}/coupons/v1/health/live",
+            "method": "GET",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Accept"
+              }
+            ]
+          }
         },
         {
-          "request": {
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "GET",
-            "url": "{{gatewayUrl}}/coupons/v1/health/ready"
-          },
+          "name": "GET health/ready",
+          "response": [],
+          "description": "Readiness and startup seed check.",
           "event": [
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status code is 200\", function () {",
                   "    pm.response.to.have.status(200);",
                   "});"
-                ]
+                ],
+                "type": "text/javascript"
               }
             }
           ],
-          "description": "Readiness and startup seed check.",
-          "response": [],
-          "name": "GET health/ready"
-        }
-      ],
-      "description": "Anonymous probes — run first.",
-      "name": "1 Health (no auth)"
-    },
-    {
-      "item": [
-        {
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{gatewayUrl}}/coupons/v1/health/ready",
+            "method": "GET",
             "header": [
               {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
+                "value": "application/json",
+                "key": "Accept"
               }
-            ],
-            "method": "POST",
-            "body": {
-              "raw": "{\"confirmedOrderCount\":0,\"cart\":{\"lines\":[{\"quantity\":2,\"pizzaId\":\"margherita\",\"lineId\":\"line-1\",\"category\":\"classic\",\"unitPrice\":20.0}]},\"code\":\"SAVE10\",\"customerId\":\"postman-customer\"}",
-              "mode": "raw"
-            },
-            "url": "{{gatewayUrl}}/coupons/v1/coupons/preview"
-          },
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 Coupons — all seeded codes (Bearer)",
+      "description": "Preview every seeded code from SeedPolicies.json. Set bearerToken before running.",
+      "item": [
+        {
+          "name": "POST preview — SAVE10 (10% off)",
+          "response": [],
+          "description": "10% off eligible lines. Basket €40 → €4 discount.",
           "event": [
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status code is 200\", function () {",
                   "    pm.response.to.have.status(200);",
                   "});",
                   "const body = pm.response.json();",
-                  "pm.test(\"SAVE10 applied\", function () {",
+                  "pm.test('SAVE10 applied', function () {",
                   "    pm.expect(body.status).to.eql(\"Applied\");",
                   "});",
-                  "pm.test(\"Discount is 4.00 on 40.00 basket\", function () {",
+                  "pm.test('Discount is 4', function () {",
                   "    pm.expect(Number(body.pricing.discount)).to.eql(4);",
                   "});"
-                ]
+                ],
+                "type": "text/javascript"
               }
             }
           ],
-          "description": "Advisory preview; 10% off €40 basket.",
-          "response": [],
-          "name": "POST preview — SAVE10"
-        },
-        {
           "request": {
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "method": "POST",
+            "url": "{{gatewayUrl}}/coupons/v1/coupons/preview",
             "body": {
-              "raw": "{\"confirmedOrderCount\":0,\"cart\":{\"lines\":[{\"quantity\":1,\"pizzaId\":\"margherita\",\"lineId\":\"line-1\",\"category\":\"classic\",\"unitPrice\":20.0}]},\"code\":\"OLDCODE\",\"customerId\":\"postman-customer\"}",
+              "raw": "{\"code\":\"SAVE10\",\"cart\":{\"lines\":[{\"pizzaId\":\"margherita\",\"category\":\"classic\",\"lineId\":\"line-1\",\"quantity\":2,\"unitPrice\":20.0}]},\"confirmedOrderCount\":0,\"customerId\":\"postman-customer\"}",
               "mode": "raw"
             },
-            "url": "{{gatewayUrl}}/coupons/v1/coupons/preview"
-          },
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Accept"
+              },
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ]
+          }
+        },
+        {
+          "name": "POST preview — FLAT5 (€5 off ≥ €20)",
+          "response": [],
+          "description": "Fixed €5 when subtotal ≥ €20.",
           "event": [
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status code is 200\", function () {",
                   "    pm.response.to.have.status(200);",
                   "});",
                   "const body = pm.response.json();",
-                  "pm.test(\"OLDCODE rejected\", function () {",
-                  "    pm.expect(body.status).to.eql(\"Rejected\");",
+                  "pm.test('FLAT5 applied', function () {",
+                  "    pm.expect(body.status).to.eql(\"Applied\");",
+                  "});",
+                  "pm.test('Discount is 5', function () {",
+                  "    pm.expect(Number(body.pricing.discount)).to.eql(5);",
                   "});"
-                ]
+                ],
+                "type": "text/javascript"
               }
             }
           ],
-          "description": "Business rejection still returns HTTP 200.",
-          "response": [],
-          "name": "POST preview — OLDCODE rejected"
-        }
-      ],
-      "description": "Customer product through /coupons. Set collection variable bearerToken first.",
-      "name": "2 Coupons (Bearer token)"
-    },
-    {
-      "item": [
-        {
           "request": {
+            "url": "{{gatewayUrl}}/coupons/v1/coupons/preview",
+            "body": {
+              "raw": "{\"code\":\"FLAT5\",\"cart\":{\"lines\":[{\"pizzaId\":\"margherita\",\"category\":\"classic\",\"lineId\":\"line-1\",\"quantity\":2,\"unitPrice\":20.0}]},\"confirmedOrderCount\":0,\"customerId\":\"postman-customer\"}",
+              "mode": "raw"
+            },
+            "method": "POST",
             "header": [
               {
-                "key": "Accept",
-                "value": "application/json"
+                "value": "application/json",
+                "key": "Accept"
+              },
+              {
+                "value": "application/json",
+                "key": "Content-Type"
               }
-            ],
-            "method": "GET",
-            "url": "{{gatewayUrl}}/orders/v1/pizzas"
-          },
+            ]
+          }
+        },
+        {
+          "name": "POST preview — VEGGIE15 (15% veg, cap €10)",
+          "response": [],
+          "description": "Vegetarian lines only; subtotal ≥ €25; first order or weekend. Uses category Vegetarian in cart.",
           "event": [
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('VEGGIE15 applied', function () {",
+                  "    pm.expect(body.status).to.eql(\"Applied\");",
+                  "});",
+                  "pm.test('Discount is 7.5', function () {",
+                  "    pm.expect(Number(body.pricing.discount)).to.eql(7.5);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "url": "{{gatewayUrl}}/coupons/v1/coupons/preview",
+            "body": {
+              "raw": "{\"code\":\"VEGGIE15\",\"cart\":{\"lines\":[{\"pizzaId\":\"margherita\",\"category\":\"Vegetarian\",\"lineId\":\"line-1\",\"quantity\":2,\"unitPrice\":12.5},{\"pizzaId\":\"quattro-formaggi\",\"category\":\"Vegetarian\",\"lineId\":\"line-2\",\"quantity\":2,\"unitPrice\":12.5}]},\"confirmedOrderCount\":0,\"customerId\":\"postman-customer\"}",
+              "mode": "raw"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Accept"
+              },
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ]
+          }
+        },
+        {
+          "name": "POST preview — BOGO (2nd item free)",
+          "response": [],
+          "description": "Buy-one-get-one on second eligible line (qty ≥ 2).",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('BOGO applied', function () {",
+                  "    pm.expect(body.status).to.eql(\"Applied\");",
+                  "});",
+                  "pm.test('Discount is 10', function () {",
+                  "    pm.expect(Number(body.pricing.discount)).to.eql(10);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "url": "{{gatewayUrl}}/coupons/v1/coupons/preview",
+            "body": {
+              "raw": "{\"code\":\"BOGO\",\"cart\":{\"lines\":[{\"pizzaId\":\"margherita\",\"category\":\"classic\",\"lineId\":\"line-1\",\"quantity\":2,\"unitPrice\":10.0}]},\"confirmedOrderCount\":0,\"customerId\":\"postman-customer\"}",
+              "mode": "raw"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Accept"
+              },
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ]
+          }
+        },
+        {
+          "name": "POST preview — EITHER (best of % or flat)",
+          "response": [],
+          "description": "Best of 15% or €5; €29 basket picks €5.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('EITHER applied', function () {",
+                  "    pm.expect(body.status).to.eql(\"Applied\");",
+                  "});",
+                  "pm.test('Discount is 5', function () {",
+                  "    pm.expect(Number(body.pricing.discount)).to.eql(5);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "url": "{{gatewayUrl}}/coupons/v1/coupons/preview",
+            "body": {
+              "raw": "{\"code\":\"EITHER\",\"cart\":{\"lines\":[{\"pizzaId\":\"margherita\",\"category\":\"Vegetarian\",\"lineId\":\"line-1\",\"quantity\":2,\"unitPrice\":14.5}]},\"confirmedOrderCount\":0,\"customerId\":\"postman-customer\"}",
+              "mode": "raw"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Accept"
+              },
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ]
+          }
+        },
+        {
+          "name": "POST preview — OLDCODE rejected",
+          "response": [],
+          "description": "Expired policy window — HTTP 200 with status Rejected.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('OLDCODE rejected', function () {",
+                  "    pm.expect(body.status).to.eql(\"Rejected\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "url": "{{gatewayUrl}}/coupons/v1/coupons/preview",
+            "body": {
+              "raw": "{\"code\":\"OLDCODE\",\"cart\":{\"lines\":[{\"pizzaId\":\"margherita\",\"category\":\"classic\",\"lineId\":\"line-1\",\"quantity\":1,\"unitPrice\":20.0}]},\"confirmedOrderCount\":0,\"customerId\":\"postman-customer\"}",
+              "mode": "raw"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Accept"
+              },
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ]
+          }
+        },
+        {
+          "name": "POST preview — LIMITED1 (global cap 1)",
+          "response": [],
+          "description": "Applied until the single global redemption is consumed; may be Rejected on prod after first checkout.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('LIMITED1 applied or cap reached', function () {",
+                  "    pm.expect(body.status).to.be.oneOf([\"Applied\", \"Rejected\"]);",
+                  "});",
+                  "if (pm.response.json().status === \"Applied\") {",
+                  "    pm.test(\"Discount present when applied\", function () {",
+                  "        pm.expect(Number(pm.response.json().pricing.discount)).to.be.above(0);",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "url": "{{gatewayUrl}}/coupons/v1/coupons/preview",
+            "body": {
+              "raw": "{\"code\":\"LIMITED1\",\"cart\":{\"lines\":[{\"pizzaId\":\"margherita\",\"category\":\"classic\",\"lineId\":\"line-1\",\"quantity\":2,\"unitPrice\":20.0}]},\"confirmedOrderCount\":0,\"customerId\":\"postman-customer\"}",
+              "mode": "raw"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Accept"
+              },
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3 Orders — checkout by coupon (Bearer)",
+      "description": "Catalog + checkout per coupon. Requires Coupon.Redeem on Order API MI. Run after folder 2.",
+      "item": [
+        {
+          "name": "GET pizzas catalog",
+          "response": [],
+          "description": "Catalog from data/pizzas.json.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
                 "exec": [
                   "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
                   "pm.test(\"Has pizzas\", function () {",
                   "    pm.expect(pm.response.json().pizzas.length).to.be.above(0);",
                   "});"
-                ]
+                ],
+                "type": "text/javascript"
               }
             }
           ],
-          "description": "Catalog from data/pizzas.json.",
-          "response": [],
-          "name": "GET pizzas catalog"
-        },
-        {
           "request": {
+            "url": "{{gatewayUrl}}/orders/v1/pizzas",
+            "method": "GET",
             "header": [
               {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
+                "value": "application/json",
+                "key": "Accept"
               }
-            ],
-            "method": "POST",
-            "body": {
-              "raw": "{\"lines\":[{\"quantity\":2,\"pizzaId\":\"margherita\"},{\"quantity\":1,\"pizzaId\":\"bbq-chicken\"}],\"couponCode\":\"SAVE10\",\"clientTotal\":1.0,\"customerId\":\"postman-customer\"}",
-              "mode": "raw"
-            },
-            "url": "{{gatewayUrl}}/orders/v1/orders"
-          },
+            ]
+          }
+        },
+        {
+          "name": "POST place order — SAVE10",
+          "response": [],
+          "description": "margherita×2 + bbq-chicken×1 → subtotal €31, 10% off → total €27.90.",
           "event": [
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Order created\", function () {",
                   "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
                   "});",
                   "if (pm.response.code === 200 || pm.response.code === 201) {",
                   "    const body = pm.response.json();",
-                  "    pm.collectionVariables.set(\"orderId\", body.orderId);",
-                  "    pm.test(\"Server priced total\", function () {",
+                  "    pm.collectionVariables.set('orderId', body.orderId);",
+                  "    pm.test('Server priced total 27.9', function () {",
                   "        pm.expect(Number(body.total)).to.eql(27.9);",
                   "    });",
                   "}"
-                ]
+                ],
+                "type": "text/javascript"
               }
             }
           ],
-          "description": "Server re-prices; clientTotal is ignored. Saves orderId variable.",
-          "response": [],
-          "name": "POST place order — SAVE10"
-        },
-        {
           "request": {
+            "url": "{{gatewayUrl}}/orders/v1/orders",
+            "body": {
+              "raw": "{\"couponCode\":\"SAVE10\",\"lines\":[{\"quantity\":2,\"pizzaId\":\"margherita\"},{\"quantity\":1,\"pizzaId\":\"bbq-chicken\"}],\"clientTotal\":1.0,\"customerId\":\"postman-customer\"}",
+              "mode": "raw"
+            },
+            "method": "POST",
             "header": [
               {
-                "key": "Accept",
-                "value": "application/json"
+                "value": "application/json",
+                "key": "Accept"
+              },
+              {
+                "value": "application/json",
+                "key": "Content-Type"
               }
-            ],
-            "method": "GET",
-            "url": "{{gatewayUrl}}/orders/v1/orders/{{orderId}}"
-          },
+            ]
+          }
+        },
+        {
+          "name": "POST place order — FLAT5",
+          "response": [],
+          "description": "Same basket; €5 flat off → total €26.00.",
           "event": [
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Order created\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set('orderIdFlat5', body.orderId);",
+                  "    pm.test('Server priced total 26', function () {",
+                  "        pm.expect(Number(body.total)).to.eql(26);",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "url": "{{gatewayUrl}}/orders/v1/orders",
+            "body": {
+              "raw": "{\"couponCode\":\"FLAT5\",\"lines\":[{\"quantity\":2,\"pizzaId\":\"margherita\"},{\"quantity\":1,\"pizzaId\":\"bbq-chicken\"}],\"clientTotal\":1.0,\"customerId\":\"postman-flat5\"}",
+              "mode": "raw"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Accept"
+              },
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ]
+          }
+        },
+        {
+          "name": "POST place order — BOGO",
+          "response": [],
+          "description": "margherita×2 → second pizza free → total €9.50.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Order created\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set('orderIdBogo', body.orderId);",
+                  "    pm.test('Server priced total 9.5', function () {",
+                  "        pm.expect(Number(body.total)).to.eql(9.5);",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "url": "{{gatewayUrl}}/orders/v1/orders",
+            "body": {
+              "raw": "{\"couponCode\":\"BOGO\",\"lines\":[{\"quantity\":2,\"pizzaId\":\"margherita\"}],\"clientTotal\":1.0,\"customerId\":\"postman-bogo\"}",
+              "mode": "raw"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Accept"
+              },
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ]
+          }
+        },
+        {
+          "name": "POST place order — EITHER",
+          "response": [],
+          "description": "Same basket as SAVE10; best of 15% vs €5 → total €26.00.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Order created\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set('orderIdEither', body.orderId);",
+                  "    pm.test('Server priced total 26', function () {",
+                  "        pm.expect(Number(body.total)).to.eql(26);",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "url": "{{gatewayUrl}}/orders/v1/orders",
+            "body": {
+              "raw": "{\"couponCode\":\"EITHER\",\"lines\":[{\"quantity\":2,\"pizzaId\":\"margherita\"},{\"quantity\":1,\"pizzaId\":\"bbq-chicken\"}],\"clientTotal\":1.0,\"customerId\":\"postman-either\"}",
+              "mode": "raw"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Accept"
+              },
+              {
+                "value": "application/json",
+                "key": "Content-Type"
+              }
+            ]
+          }
+        },
+        {
+          "name": "GET order by id (SAVE10)",
+          "response": [],
+          "description": "Uses orderId from SAVE10 checkout. Skipped when checkout did not run.",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const id = pm.collectionVariables.get('orderId');",
+                  "if (!id) {",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
                 "exec": [
                   "pm.test(\"Status code is 200\", function () {",
                   "    pm.response.to.have.status(200);",
@@ -296,61 +660,125 @@
                   "pm.test(\"Order id matches\", function () {",
                   "    pm.expect(body.orderId).to.eql(pm.collectionVariables.get(\"orderId\"));",
                   "});"
-                ]
+                ],
+                "type": "text/javascript"
               }
             }
           ],
-          "description": "Uses orderId from place order.",
-          "response": [],
-          "name": "GET order by id"
+          "request": {
+            "url": "{{gatewayUrl}}/orders/v1/orders/{{orderId}}",
+            "method": "GET",
+            "header": [
+              {
+                "value": "application/json",
+                "key": "Accept"
+              }
+            ]
+          }
         }
-      ],
-      "description": "Customer product through /orders. Run Place order before Get order.",
-      "name": "3 Orders (Bearer token)"
+      ]
     },
     {
+      "name": "4 Admin (optional)",
+      "description": "Requires Coupon.Admin on the token AND admin APIM subscription key (Ocp-Apim-Subscription-Key).",
       "item": [
         {
+          "name": "GET admin policies",
+          "response": [],
+          "description": "List seeded policies. Skipped when adminSubscriptionKey is empty.",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const key = pm.collectionVariables.get(\"adminSubscriptionKey\");",
+                  "if (!key) {",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Response is JSON\", function () {",
+                  "    pm.expect(body).to.be.an(\"object\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
+            "url": "{{gatewayUrl}}/admin/v1/admin/policies",
+            "method": "GET",
             "header": [
               {
-                "key": "Accept",
-                "value": "application/json"
+                "value": "application/json",
+                "key": "Accept"
               },
               {
-                "key": "Ocp-Apim-Subscription-Key",
-                "value": "{{adminSubscriptionKey}}"
+                "value": "{{adminSubscriptionKey}}",
+                "key": "Ocp-Apim-Subscription-Key"
               }
-            ],
-            "method": "GET",
-            "url": "{{gatewayUrl}}/admin/v1/admin/policies"
-          },
-          "description": "List seeded policies.",
-          "response": [],
-          "name": "GET admin policies"
+            ]
+          }
         },
         {
+          "name": "GET policy engine manifest",
+          "response": [],
+          "description": "Engine capability manifest. Skipped when adminSubscriptionKey is empty.",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const key = pm.collectionVariables.get(\"adminSubscriptionKey\");",
+                  "if (!key) {",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Response is JSON\", function () {",
+                  "    pm.expect(body).to.be.an(\"object\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
+            "url": "{{gatewayUrl}}/admin/v1/policy-engine/manifest",
+            "method": "GET",
             "header": [
               {
-                "key": "Accept",
-                "value": "application/json"
+                "value": "application/json",
+                "key": "Accept"
               },
               {
-                "key": "Ocp-Apim-Subscription-Key",
-                "value": "{{adminSubscriptionKey}}"
+                "value": "{{adminSubscriptionKey}}",
+                "key": "Ocp-Apim-Subscription-Key"
               }
-            ],
-            "method": "GET",
-            "url": "{{gatewayUrl}}/admin/v1/policy-engine/manifest"
-          },
-          "description": "Engine capability manifest.",
-          "response": [],
-          "name": "GET policy engine manifest"
+            ]
+          }
         }
-      ],
-      "description": "Requires Coupon.Admin on the token AND admin APIM subscription key (Ocp-Apim-Subscription-Key).",
-      "name": "4 Admin (optional)"
+      ]
     }
   ]
 }
