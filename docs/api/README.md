@@ -29,7 +29,25 @@ dotnet run --project src/OrderApi
 - Scalar: http://localhost:5043/scalar
 - ReDoc: http://localhost:5043/redoc
 
-Docs UIs are mapped in **Development** and **Testing** only (not Production).
+Docs UIs are mapped in **Development**, **Testing**, or when `ApiDocumentation:Enabled` is `true` (set by Bicep for the develop deployment only; production leaves it off).
+
+### Deployed develop
+
+After develop CD, Scalar is on each Container App hostname (not through APIM):
+
+```text
+https://{ca-coupon-api-dev-fqdn}/scalar
+https://{ca-order-api-dev-fqdn}/scalar
+```
+
+Discover FQDNs:
+
+```powershell
+az containerapp show -g rg-coupon-demo -n ca-coupon-api-dev --query properties.configuration.ingress.fqdn -o tsv
+az containerapp show -g rg-coupon-demo -n ca-order-api-dev --query properties.configuration.ingress.fqdn -o tsv
+```
+
+Production (`main` / `main.prod.bicepparam`) does not set `enableApiDocumentation`; `/scalar` returns 404 there.
 
 ## How docs stay up to date
 

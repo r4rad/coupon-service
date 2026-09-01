@@ -17,12 +17,13 @@ public sealed class OrderApiOptions
     public bool UseManagedIdentity { get; init; }
 
     /// <summary>
-    /// Application ID URI of the Coupon Service API; used as the IMDS / identity-endpoint resource.
+    /// Application ID URI of the Coupon Service API (documentation and local configuration).
     /// </summary>
     public string CouponServiceResource { get; init; } = "api://coupon-service";
 
     /// <summary>
-    /// OAuth scope documented for reviewers; identity endpoint uses <see cref="CouponServiceResource"/>.
+    /// OAuth scope passed to the managed-identity endpoint so <c>Coupon.Redeem</c> app roles are
+    /// included in the access token (AC-7.7).
     /// </summary>
     public string CouponServiceScope { get; init; } = "api://coupon-service/.default";
 

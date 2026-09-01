@@ -85,7 +85,7 @@ app.UseExceptionHandler();
 
 app.UseStatusCodePages();
 
-if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
+if (OpenApiUiExtensions.IsApiDocumentationEnabled(app.Environment, app.Configuration))
 {
     app.MapApiDocumentation("Coupon Service API");
 }

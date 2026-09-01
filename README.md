@@ -12,6 +12,7 @@ Standalone coupon policy engine and redemption lifecycle for a pizza ordering pl
 | [docs/deployment.md](docs/deployment.md) | Multi-stage CD (`develop` → non-prod, `main` → prod), SKUs, tear-down |
 | [docs/authentication.md](docs/authentication.md) | Entra apps, APIM `validate-jwt`, managed-identity hop, local test tokens |
 | [docs/pipeline-prerequisites.md](docs/pipeline-prerequisites.md) | One-time Azure DevOps / WIF / RBAC setup |
+| [docs/testing-deployed-apis.md](docs/testing-deployed-apis.md) | Manual E2E testing: Postman collections, `test-deployed-apis.ps1`, tokens |
 | [docs/assumptions.md](docs/assumptions.md) | Currency, region, SKUs, dual RGs, deferred work |
 | [docs/api/README.md](docs/api/README.md) | Scalar / ReDoc / OpenAPI in the running APIs |
 | [data/README.md](data/README.md) | Pizza catalog seed |
@@ -121,14 +122,9 @@ Unit, engine, pricing and in-process BDD need **no** network or emulator. Cosmos
 
 ## Using the deployed APIs through APIM
 
-Azure API Management is the **only public entry point**. Get the gateway URL from the deployment output `apimGatewayUrl`, or:
+Azure API Management is the **only public entry point**. For gateway URLs, bearer tokens, Postman collections, and the `test-deployed-apis.ps1` walkthrough, see **[docs/testing-deployed-apis.md](docs/testing-deployed-apis.md)**.
 
-```powershell
-az deployment group show -g rg-coupon-demo -n <deployment-name> `
-  --query properties.outputs.apimGatewayUrl.value -o tsv
-```
-
-APIM API path prefixes map onto the backend `/v1/...` routes:
+Quick reference — APIM path prefixes:
 
 | Product | Gateway base | Backend |
 |---|---|---|
@@ -167,7 +163,7 @@ Invoke-RestMethod -Method Post `
   -Body $body
 ```
 
-Anonymous preview must return **401** at the gateway. Full auth setup: [docs/authentication.md](docs/authentication.md). Post-deploy smoke: `scripts/smoke-deployed-stack.ps1`.
+Anonymous preview must return **401** at the gateway. Full auth setup: [docs/authentication.md](docs/authentication.md). Post-deploy smoke: `scripts/smoke-deployed-stack.ps1`. Step-by-step manual testing: [docs/testing-deployed-apis.md](docs/testing-deployed-apis.md).
 
 ## How the pieces fit
 
