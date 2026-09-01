@@ -123,6 +123,7 @@ public sealed class EntraApimManagedIdentityTests
         Assert.Contains("value: 'true'", containerApps, StringComparison.Ordinal);
         Assert.Contains("OrderApi__CouponServiceResource", containerApps, StringComparison.Ordinal);
         Assert.Contains("OrderApi__CouponServiceScope", containerApps, StringComparison.Ordinal);
+        Assert.Contains("Authentication__Jwt__TrustedRedeemPrincipalIds__0", containerApps, StringComparison.Ordinal);
         Assert.DoesNotContain("OrderApi__CouponServiceToken", containerApps, StringComparison.Ordinal);
     }
 

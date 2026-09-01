@@ -23,6 +23,9 @@ param orderIdentityId string
 @description('User-assigned identity client id for the order API.')
 param orderIdentityClientId string
 
+@description('User-assigned identity service principal object id for the order API (AC-7.7).')
+param orderIdentityPrincipalId string
+
 @description('Entra authority used by the Coupon Service JwtBearer middleware (AC-7.6).')
 param jwtAuthority string
 
@@ -104,6 +107,10 @@ resource couponApp 'Microsoft.Web/sites@2023-12-01' = {
         {
           name: 'Authentication__TestToken__Enabled'
           value: 'false'
+        }
+        {
+          name: 'Authentication__Jwt__TrustedRedeemPrincipalIds__0'
+          value: orderIdentityPrincipalId
         }
         {
           name: 'Seeding__Enabled'
