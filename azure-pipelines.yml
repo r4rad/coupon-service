@@ -482,15 +482,51 @@ stages:
           - download: current
             artifact: provision-outputs
 
-          - bash: |
-              set -euo pipefail
-              COUPON_URL="${ADMIN_API_BASE_URL:-}"
-              if [ -z "$COUPON_URL" ]; then
-                COUPON_URL=$(jq -r '.couponBackendUrl.value // empty' "$(Pipeline.Workspace)/provision-outputs/outputs.json")
-              fi
-              curl -fsS "${COUPON_URL}/v1/health/live"
-              curl -fsS "${COUPON_URL}/v1/health/ready"
-              echo "Smoke checks passed. Optional teardown is not performed (demo environment retained)."
+          # Same empty-variable trap as Seed/Smoke: when AdminApiBaseUrl is unset, ADO expands
+          # $(AdminApiBaseUrl) to the literal string, which is non-empty for bash and becomes a
+          # "Bad hostname" for curl. Resolve and validate in one pwsh step against the backend.
+          - pwsh: |
+              $ErrorActionPreference = 'Stop'
+
+              function Get-ConfiguredValue {
+                param([string] $Value)
+                if ([string]::IsNullOrWhiteSpace($Value)) { return $null }
+                if ($Value -match '^\$\([A-Za-z0-9_]+\)$') { return $null }
+                return $Value.Trim()
+              }
+
+              $outputsPath = Join-Path $env:PIPELINE_WORKSPACE 'provision-outputs/outputs.json'
+              $outputs = Get-Content -LiteralPath $outputsPath -Raw | ConvertFrom-Json
+
+              $base = Get-ConfiguredValue -Value $env:ADMIN_API_BASE_URL
+              if ($null -eq $base) {
+                $base = Get-ConfiguredValue -Value ([string]$outputs.couponBackendUrl.value)
+              }
+
+              if ($null -eq $base) {
+                throw 'Coupon Service base URL could not be resolved from AdminApiBaseUrl or couponBackendUrl.'
+              }
+
+              $uri = $null
+              if (-not [Uri]::TryCreate($base, [UriKind]::Absolute, [ref]$uri) -or
+                  ($uri.Scheme -ne [Uri]::UriSchemeHttp -and $uri.Scheme -ne [Uri]::UriSchemeHttps)) {
+                throw "Coupon Service base URL is not an absolute http(s) URI: '$base'"
+              }
+
+              $base = $base.TrimEnd('/')
+              Write-Host "Verify against backend $base"
+
+              foreach ($path in @('/v1/health/live', '/v1/health/ready')) {
+                $status = 0
+                $null = Invoke-RestMethod -Uri "$base$path" -Method Get -SkipHttpErrorCheck -StatusCodeVariable status
+                if ([int]$status -ne 200) {
+                  throw "Backend $path returned HTTP $status."
+                }
+                Write-Host "  PASS  $path (HTTP 200)"
+              }
+
+              Write-Host 'Smoke checks passed. Optional teardown is not performed (demo environment retained).'
             displayName: Smoke health endpoints
             env:
+              PIPELINE_WORKSPACE: $(Pipeline.Workspace)
               ADMIN_API_BASE_URL: $(AdminApiBaseUrl)
