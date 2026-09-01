@@ -95,8 +95,8 @@ Order API managed-identity hop (**AC-7.7**):
 ```text
 OrderApi__UseManagedIdentity     = true
 OrderApi__CouponServiceBaseUrl   = https://{coupon-app-fqdn}
-OrderApi__CouponServiceResource  = api://coupon-service
-OrderApi__CouponServiceScope     = api://coupon-service/.default   # identity-endpoint resource; app roles appear in the token
+OrderApi__CouponServiceResource  = api://coupon-service   # identity-endpoint `resource` parameter (AC-7.7)
+OrderApi__CouponServiceScope     = api://coupon-service/.default   # delegated token scope only (az CLI / user tokens)
 # OrderApi__CouponServiceToken is NOT set in Azure — no shared secret
 ```
 

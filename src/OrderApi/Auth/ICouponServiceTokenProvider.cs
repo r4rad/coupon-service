@@ -80,12 +80,12 @@ public sealed class ManagedIdentityCouponServiceTokenProvider(
     private async Task<IdentityTokenResponse> RequestTokenAsync(CancellationToken cancellationToken)
     {
         // Container Apps / App Service identity endpoints accept `resource`, not `scope`.
-        // For v2 APIs (requestedAccessTokenVersion = 2), append /.default so app roles appear.
-        var resource = options.Value.CouponServiceScope;
+        // Use the Application ID URI (no /.default suffix — that form is for OAuth scope flows).
+        var resource = options.Value.CouponServiceResource;
         if (string.IsNullOrWhiteSpace(resource))
         {
             throw new InvalidOperationException(
-                "OrderApi:CouponServiceScope must be configured when UseManagedIdentity is true.");
+                "OrderApi:CouponServiceResource must be configured when UseManagedIdentity is true.");
         }
 
         var clientId = Environment.GetEnvironmentVariable("AZURE_CLIENT_ID");
