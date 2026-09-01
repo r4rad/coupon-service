@@ -78,10 +78,10 @@ Observed on this subscription (**not** merely one-per-region):
 
 | Limit | Observed error | Effect |
 |---|---|---|
-| **At most one** Container Apps managed environment **in the whole subscription** | `MaxNumberOfGlobalEnvironmentsInSubExceeded` | Dev and prod cannot both host Container Apps at once |
+| **At most one** Container Apps managed environment **in the whole subscription** | `MaxNumberOfGlobalEnvironmentsInSubExceeded` | Dev and prod cannot each create a CAE |
 | Zero App Service VMs | `SubscriptionIsOverQuotaForSku` | The App Service F1 fallback cannot run here |
 
-`main.dev.bicepparam` / develop CD owns the single CAE slot (`cae-coupon-dev` in eastus2). `main.prod.bicepparam` still sets `hostingMode = containerApps` and `containerAppsLocation = 'eastus'` (P-14) so a quota increase or a second subscription unlocks production without another template change — until then, **prod provision fails** while the non-prod CAE exists. `main.demo.bicepparam` also targets `containerApps` (`cae-coupon-demo`) — do not run it against `rg-coupon-demo`, or it fights the develop pipeline for the same global slot.
+Develop CD creates the single CAE (`cae-coupon-dev` in `rg-coupon-demo`). **`main.prod.bicepparam` reuses it** via `existingManagedEnvironmentResourceGroup` / `existingManagedEnvironmentName`, so prod Container Apps in `rg-coupon-prod` attach to that environment instead of creating `cae-coupon-prod`. Run develop CD at least once before main CD. To give prod its own CAE after a quota increase, clear those two params and optionally set `containerAppsLocation` to a second region.
 ## 4. Entra app registration
 
 The Coupon Service API app registration must exist before CD Seed, APIM `validate-jwt` (**AC-7.6**) or the Order API managed-identity hop (**AC-7.7**) can work. Without it, `az account get-access-token --resource api://coupon-service` fails with `AADSTS500011: The resource principal ... was not found in the tenant`, and Seed falls through to the `AdminApiBearerToken` fallback and returns **401**.

@@ -11,8 +11,8 @@ Standing decisions and constraints that are not repeated in every ticket. Author
 ## Region and subscription
 
 - Live deployment region for this subscription is **`eastus2`** (`westeurope` was rejected as location-ineligible).
-- Static Web Apps and most resources stay in `eastus2`. Production Container Apps declare `containerAppsLocation = 'eastus'` (P-14) so a second CAE can run in another region when quota allows.
-- This subscription currently allows **at most one Container Apps environment globally** and **zero App Service VMs**, so only the develop CD path is green until quota changes. See `docs/deployment.md`.
+- Static Web Apps and most resources stay in `eastus2`. Production Container Apps reuse the develop CD environment (`cae-coupon-dev` in `rg-coupon-demo`) because this subscription allows only one CAE globally.
+- Both develop and main CD paths are intended to run green on this subscription when develop CD has provisioned the shared CAE first. See `docs/deployment.md`.
 
 ## SKUs (NFR-6 demo posture)
 

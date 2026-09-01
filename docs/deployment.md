@@ -19,7 +19,7 @@ Ticket branches are created from the latest `develop` and open pull requests aga
 |---|---|---|---|
 | PR into `develop` or `main` | — | — | CI only (Build + Test + bicep lint). No provision. |
 | Merge to `develop` | `rg-coupon-demo` | `infra/bicep/main.dev.bicepparam` | Non-prod; `environmentName=dev`, `hostingMode=containerApps` |
-| Merge to `main` | `rg-coupon-prod` | `infra/bicep/main.prod.bicepparam` | Production; `environmentName=prod`; CAE in `eastus` (`containerAppsLocation`), every other resource in `eastus2` |
+| Merge to `main` | `rg-coupon-prod` | `infra/bicep/main.prod.bicepparam` | Production; `environmentName=prod`; Container Apps reuse `cae-coupon-dev` from `rg-coupon-demo` (one CAE per subscription) |
 
 ### Empty resource group → green pipeline (AC-9.1)
 
@@ -38,7 +38,7 @@ Prefer a **single** region for the whole demo when the subscription allows it.
 | `eastasia` | Cosmos `ServiceUnavailable` (high demand); APIM name held by soft-delete |
 | `eastus2` | **Succeeded** — Cosmos, APIM Consumption, Container Apps, ACR Basic, SWA Free |
 
-This subscription allows **at most one Container Apps environment in the whole subscription** (`MaxNumberOfGlobalEnvironmentsInSubExceeded` — stricter than one-per-region) and **zero App Service VMs**, so production cannot raise a second CAE while non-prod holds `cae-coupon-dev`. Param files still declare `hostingMode = containerApps` with prod `containerAppsLocation = 'eastus'` so a quota increase unlocks prod without rewriting the template. Until then, prove the develop CD path only.
+This subscription allows **at most one Container Apps environment in the whole subscription** (`MaxNumberOfGlobalEnvironmentsInSubExceeded` — stricter than one-per-region) and **zero App Service VMs**. Production therefore **reuses** the develop CD environment (`cae-coupon-dev` in `rg-coupon-demo`): prod Container Apps (`ca-coupon-api-prod`, `ca-order-api-prod`) deploy into `rg-coupon-prod` but attach to that shared CAE. APIM, Cosmos, Key Vault and the rest stay prod-scoped in `rg-coupon-prod`. Clear `existingManagedEnvironmentResourceGroup` / `existingManagedEnvironmentName` in `main.prod.bicepparam` when a quota increase allows a dedicated prod CAE.
 
 Demo/dev/prod param files and the pipeline `location` default use **`eastus2`**. Template defaults in `main.bicep` remain `westeurope` for subscriptions that can use them.
 
