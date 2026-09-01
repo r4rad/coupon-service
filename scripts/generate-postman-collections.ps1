@@ -41,7 +41,6 @@ $orderBody = @{
     customerId   = 'postman-customer'
     couponCode   = 'SAVE10'
     clientTotal  = 1.00
-    couponPolicy = 'AllowWithoutDiscount'
     lines        = @(
         @{ pizzaId = 'margherita'; quantity = 2 }
         @{ pizzaId = 'bbq-chicken'; quantity = 1 }

@@ -291,7 +291,6 @@ function Get-OrderBody {
             customerId   = 'e2e-test-customer'
             couponCode   = $Code
             clientTotal  = 1.00
-            couponPolicy = 'AllowWithoutDiscount'
             lines        = @(
                 @{ pizzaId = 'margherita'; quantity = 2 }
                 @{ pizzaId = 'bbq-chicken'; quantity = 1 }
