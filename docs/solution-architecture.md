@@ -1,18 +1,19 @@
 # Coupon Service — solution architecture
 
-Coupon support for the pizza ordering platform.
+As-built architecture for the coupon policy engine and redemption service. For a fresh-user runbook (local + APIM), start at the repository [README.md](../README.md).
 
 | | |
 |---|---|
 | **Runtime** | ASP.NET Core Web API, .NET 10 (LTS to Nov 2028) |
 | **Rule engine** | Declarative **Policy Engine** — expression AST over a typed fact model, compiled and cached |
-| **Data** | Azure Cosmos DB for NoSQL, serverless or free tier |
-| **Gateway** | Azure API Management, Consumption tier |
-| **Identity** | Entra External ID (customers), workforce Entra ID (admin), Managed Identity (service to service) |
-| **Hosting** | Azure Container Apps, App Service F1 as strict zero-cost fallback |
-| **IaC / CI** | Bicep + Azure DevOps multi-stage YAML |
+| **Data** | Azure Cosmos DB for NoSQL (serverless); in-memory repositories for local Development |
+| **Gateway** | Azure API Management, Consumption tier — sole public entry point |
+| **Identity** | Entra ID (workforce stand-in for customers + admin), Managed Identity (Order → Coupon) |
+| **Hosting** | Azure Container Apps (`hostingMode=containerApps`); App Service modules remain as fallback |
+| **IaC / CI** | Bicep + Azure DevOps multi-stage YAML (`azure-pipelines.yml`, P-13 / P-14) |
 | **Logging** | Serilog → Application Insights + Log Analytics |
-| **Tests** | xUnit + FluentAssertions + Reqnroll BDD in CI, deployed-stack smoke post-deploy |
+| **Tests** | xUnit + FluentAssertions + Reqnroll BDD in CI; deployed-stack smoke post-deploy (not BDD against Azure) |
+| **Frontend** | Deferred — Static Web Apps shell is provisioned; no React SPA ships in this repository |
 
 ---
 
@@ -22,7 +23,7 @@ Coupons are a **standalone service**. The ordering platform owns the basket, the
 
 Two flows, deliberately separated: **preview** is what the browser asks, debounced and **advisory**; **checkout** is the Order API re-pricing server to server and **reserving** the coupon before committing. The browser's number is never trusted.
 
-No existing pizza platform was made available, so we also build a **thin Order API** playing the role the client's platform plays. The Coupon Service contract does not change when the real platform replaces it.
+No existing pizza platform was made available, so we also build a **thin Order API** playing the role the client's platform plays. The Coupon Service contract does not change when the real platform replaces it. Callers today are curl, Scalar, BDD, and the CD smoke script; a React SPA remains a deferred stretch goal.
 
 ```mermaid
 flowchart LR
@@ -30,36 +31,37 @@ flowchart LR
         CS["Coupon Service<br/>policy engine + redemption"]
     end
     subgraph standin ["STAND-IN for the client platform"]
-        SPA["React SPA"]
+        CALLER["API caller<br/>curl / Scalar / smoke"]
         OA["Order API - thin"]
     end
     subgraph future ["LATER - no coupon change needed"]
         REAL["Client's real order platform"]
+        SPA["React SPA - deferred"]
     end
 
-    SPA -->|"1. preview - advisory only"| CS
-    SPA -->|"2. submit order"| OA
+    CALLER -->|"1. preview - advisory only"| CS
+    CALLER -->|"2. submit order"| OA
     OA -->|"3. re-price + reserve<br/>AUTHORITATIVE"| CS
     REAL -.->|"same contract, different caller"| CS
+    SPA -.->|"same APIM routes"| CS
 ```
 
 ---
 
 ## 2. Scope
 
-| In scope | Out of scope |
+| In scope (shipped) | Out of scope / deferred |
 |---|---|
-| Coupon Service: preview, reserve, confirm, release, admin CRUD | Payment capture, refunds, invoicing, tax engines |
+| Coupon Service: preview, reserve, confirm, release, admin CRUD + manifest | Payment capture, refunds, invoicing, tax engines |
 | Policy engine with fully data-driven rules | Migrating or wrapping a pre-existing POS or website |
 | Price calculation with a documented money contract | Loyalty points, gift cards, referrals, multi-code stacking |
 | Redemption lifecycle: global + per-customer caps, idempotency | Admin **web UI** (the admin **API** is in scope) |
 | Thin Order API as authoritative checkout caller | Multi-region, VNet, Private Link, WAF, Front Door |
-| React SPA: choose pizzas, enter coupon, see totals, submit | Paid APIM tiers, load and penetration testing |
-| APIM as the only public entry point, JWT + rate limiting | Kitchen, delivery, inventory, order tracking |
-| Cosmos DB with a partitioning and concurrency design | Manual portal configuration as a deployment method |
-| Bicep + pipeline provisioning from an empty resource group | |
-| xUnit and Reqnroll BDD in CI, smoke against the deployed stack | |
-| Serilog, correlation across hops, alerts, stated SLO | |
+| APIM as the only public entry point, JWT + rate limiting | React SPA on Static Web Apps (stretch — deferred) |
+| Cosmos DB with partitioning and concurrency design | `simulate` / shadow HTTP endpoints (manifest types exist) |
+| Bicep + pipeline from empty RG; startup policy seed | Paid APIM tiers, load and penetration testing |
+| xUnit + Reqnroll BDD in CI; post-deploy smoke through APIM | Kitchen, delivery, inventory, order tracking |
+| Serilog, correlation across hops, stated SLO | Manual portal configuration as a deployment method |
 
 ---
 
@@ -67,23 +69,22 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    CUST(["Customer"])
+    CUST(["Customer / API caller"])
     ADMIN(["Campaign manager"])
-    EXT["Entra External ID<br/>consumer identity"]
-    WID["Entra ID workforce"]
+    WID["Entra ID<br/>workforce / stand-in"]
     ADO["Azure DevOps<br/>repo + YAML pipeline"]
 
-    subgraph rg ["AZURE - one resource group, one region, provisioned by pipeline"]
-        SWA["Static Web Apps - Free<br/>React SPA - NO pricing logic"]
+    subgraph azure ["AZURE - dual RGs: rg-coupon-demo / rg-coupon-prod"]
+        SWA["Static Web Apps - Free<br/>shell provisioned; SPA deferred"]
 
         subgraph gw ["API MANAGEMENT - Consumption - the ONLY public entry point"]
-            P1["Customer product<br/>validate-jwt, CORS, rate-limit"]
-            P2["Admin product<br/>validate-jwt + Coupon.Admin role"]
+            P1["Customer product<br/>path /coupons + /orders<br/>validate-jwt, CORS, rate-limit"]
+            P2["Admin product<br/>path /admin<br/>validate-jwt + Coupon.Admin"]
         end
 
         subgraph svc ["CONTAINER APPS"]
             OA["Order API<br/>external ingress<br/>authoritative checkout"]
-            CS["Coupon Service<br/>external: preview + admin<br/>INTERNAL: reserve/confirm/release"]
+            CS["Coupon Service<br/>external: preview + admin<br/>reserve/confirm/release off APIM"]
         end
 
         subgraph db ["COSMOS DB - serverless"]
@@ -96,28 +97,28 @@ flowchart TB
         ACR["Container Registry"]
     end
 
-    CUST -->|"HTTPS"| SWA
-    SWA -->|"MSAL auth code + PKCE"| EXT
+    CUST -->|"Bearer JWT"| P1
     ADMIN --> WID
-    SWA -->|"preview + submit<br/>Bearer JWT"| P1
-    ADMIN -->|"policies, simulate, manifest"| P2
+    ADMIN -->|"policies + manifest<br/>subscription key + JWT"| P2
     P1 --> OA
-    P1 -->|"POST /coupons/preview"| CS
+    P1 -->|"POST …/coupons/v1/coupons/preview"| CS
     P2 --> CS
-    OA ==>|"NEVER public - internal ingress<br/>Managed Identity + Coupon.Redeem"| CS
+    OA ==>|"Managed Identity + Coupon.Redeem<br/>NOT through APIM"| CS
     CS --> C1
     CS --> C2
     CS --> KV
     CS --> AI
     OA --> AI
     ACR -.->|"images"| svc
-    ADO -.->|"Bicep what-if then create"| rg
+    ADO -.->|"Bicep what-if then create"| azure
+    SWA -.->|"deferred UI"| P1
 ```
 
-Two deliberate choices in that diagram:
+Three deliberate choices in that diagram:
 
-1. **Mutation endpoints are on no public product.** Reserve, confirm and release sit on internal ingress, reachable only by the Order API's managed identity.
+1. **Mutation endpoints are on no public product.** Reserve, confirm and release are unpublished on APIM; only the Order API reaches them with managed identity + `Coupon.Redeem`.
 2. **The Order API does not call the Coupon Service through APIM.** A gateway hop inside a trust boundary adds latency and a cold start to checkout without adding security the app role does not already provide.
+3. **Dual resource groups.** `develop` deploys to `rg-coupon-demo` (`main.dev.bicepparam`); `main` deploys to `rg-coupon-prod` (`main.prod.bicepparam`). Live demo region for this subscription is `eastus2` (see `docs/deployment.md`).
 
 ---
 
@@ -631,78 +632,75 @@ stateDiagram-v2
 
 ```mermaid
 sequenceDiagram
-    actor C as Customer
-    participant SPA as React SPA
-    participant EXT as Entra External ID
+    actor C as Caller
+    participant EXT as Entra ID
     participant APIM as APIM
     participant CS as Coupon Service
     participant DB as Cosmos DB
 
-    C->>SPA: types coupon code
-    SPA->>EXT: acquire token (MSAL, cached)
-    EXT-->>SPA: access token
-    Note over SPA: debounce 400 ms,<br/>abort in-flight request
-    SPA->>APIM: POST /coupons/preview
+    C->>EXT: acquire access token
+    EXT-->>C: Bearer JWT
+    C->>APIM: POST /coupons/v1/coupons/preview
     APIM->>APIM: validate-jwt + rate-limit
     APIM->>CS: forward + correlation id
     CS->>DB: point read policy by code (~1 RU)
     DB-->>CS: policy document
     CS->>CS: compiled policy from cache,<br/>evaluate lazily, cheapest facts first
     CS-->>APIM: 200 — status, reason, hint, breakdown
-    APIM-->>SPA: 200
-    SPA-->>C: subtotal, discount, total
+    APIM-->>C: 200
     Note over CS,DB: NEVER reserves,<br/>writes or consumes a use
 ```
 
-Preview answers `200` even when rejected, so the UI renders "this code expired on 30 August" instead of handling an error.
+Preview answers `200` even when rejected, so the client can render "this code expired on 30 August" instead of treating rejection as a transport error.
 
 ### 9.2 Checkout — authoritative
 
 ```mermaid
 sequenceDiagram
-    actor C as Customer
-    participant SPA as React SPA
+    actor C as Caller
     participant APIM as APIM
     participant OA as Order API
     participant CS as Coupon Service
     participant DB as Cosmos DB
 
-    C->>SPA: Submit order
-    SPA->>APIM: POST /orders — basket + coupon code
+    C->>APIM: POST /orders/v1/orders — basket + coupon code
     APIM->>OA: forward (validate-jwt)
     OA->>OA: acquire MI token (cached)<br/>role Coupon.Redeem
-    OA->>CS: POST /reservations — internal ingress
+    OA->>CS: POST /v1/reservations — direct, not via APIM
     CS->>DB: re-evaluate policy + CAS on counter
     DB-->>CS: reserved
     CS-->>OA: 201 — AUTHORITATIVE breakdown
     OA->>OA: persist order at the audited total
-    OA->>CS: POST /reservations/{orderId}/confirm
+    OA->>CS: POST /v1/reservations/{orderId}/confirm
     CS->>DB: Reserved → Confirmed
     CS-->>OA: 200
     OA-->>APIM: 201 — order + breakdown
-    APIM-->>SPA: 201
-    Note over SPA,OA: The browser's number is<br/>DISCARDED, not checked
+    APIM-->>C: 201
+    Note over C,OA: The client's preview total is<br/>DISCARDED, not checked
 ```
 
 ---
 
 ## 10. API surface
 
-| Method | Path | Auth | Purpose |
-|---|---|---|---|
-| `POST` | `/coupons/preview` | Customer JWT | Evaluate against a basket; breakdown, status, near-miss hint |
-| `GET` | `/health/live` · `/health/ready` | Anonymous | Liveness; readiness includes Cosmos |
-| `POST` | `/reservations` | **MI + `Coupon.Redeem`** | Re-price authoritatively and reserve |
-| `POST` | `/reservations/{orderId}/confirm` | **MI + `Coupon.Redeem`** | Commit the redemption |
-| `POST` | `/reservations/{orderId}/release` | **MI + `Coupon.Redeem`** | Return the reserved use |
-| `GET` `POST` | `/admin/policies` | `Coupon.Admin` | List, create (manifest-validated) |
-| `GET` `PUT` `DELETE` | `/admin/policies/{id}` | `Coupon.Admin` | Read, update (ETag), soft-delete to `Archived` |
-| `POST` | `/admin/policies/{id}/simulate` | `Coupon.Admin` | Dry run against a sample cart, returns trace |
-| `POST` | `/admin/policies/{id}/status` | `Coupon.Admin` | Promote Draft → Shadow → Active → Paused |
-| `GET` | `/policy-engine/manifest` | `Coupon.Admin` | Facts, operators, effects, limits |
-| `GET` `POST` | `/pizzas` · `/orders` · `/orders/{id}` | Customer JWT | Order API (stand-in) |
+Backend routes are versioned under `/v1`. APIM publishes three APIs with path prefixes `coupons`, `orders`, and `admin`, so the public URLs include that prefix before the backend path (for example `POST {gateway}/coupons/v1/coupons/preview`). See the [README](../README.md) for a gateway-oriented table.
 
-Everything is versioned by path prefix `/v1`, mirrored in APIM routing.
+| Method | Backend path | Auth | Purpose |
+|---|---|---|---|
+| `POST` | `/v1/coupons/preview` | Customer JWT at APIM (open on local app) | Evaluate against a basket; breakdown, status, near-miss hint |
+| `GET` | `/v1/health/live` · `/v1/health/ready` | Anonymous | Liveness; readiness includes policy store + startup seed |
+| `POST` | `/v1/reservations` | **MI + `Coupon.Redeem`** | Re-price authoritatively and reserve — **not on APIM** |
+| `POST` | `/v1/reservations/{orderId}/confirm` | **MI + `Coupon.Redeem`** | Commit the redemption — **not on APIM** |
+| `POST` | `/v1/reservations/{orderId}/release` | **MI + `Coupon.Redeem`** | Return the reserved use — **not on APIM** |
+| `GET` `POST` | `/v1/admin/policies` | `Coupon.Admin` | List, create (manifest-validated) |
+| `GET` `PUT` `DELETE` | `/v1/admin/policies/{id}` | `Coupon.Admin` | Read, update (ETag), soft-delete to `Archived` |
+| `GET` | `/v1/policy-engine/manifest` | `Coupon.Admin` | Facts, operators, effects, limits |
+| `GET` | `/v1/pizzas` | Customer JWT at APIM | Order API catalog |
+| `POST` `GET` | `/v1/orders` · `/v1/orders/{id}` | Customer JWT at APIM | Order API place / fetch |
+
+**Deferred HTTP surface** (types and engine support exist; no controller yet): `POST /v1/admin/policies/{id}/simulate`, shadow-status promotion endpoints (AC-6.5, AC-6.6).
+
+Deterministic demo policies are seeded at host startup when `Seeding:Enabled` is true (`src/CouponService.Api/Seeding/SeedPolicies.json`). Azure always enables this; locally set `Seeding__Enabled=true`. CD verifies convergence through `/v1/health/ready` rather than writing policies from the pipeline.
 
 ### 10.1 Error contract
 
@@ -950,7 +948,7 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-    SPA["SPA"] -->|"traceparent"| APIM["APIM"]
+    SPA["Caller"] -->|"traceparent"| APIM["APIM"]
     APIM -->|"correlation id"| OA["Order API"]
     OA -->|"SAME correlation id"| CS["Coupon Service"]
     CS --> SER["Serilog JSON"]
@@ -989,13 +987,13 @@ Topology is the Azure box in section 3. What matters here is the cost posture, b
 
 ```text
 infra/bicep/
-  main.bicep · main.demo.bicepparam
+  main.bicep · main.dev.bicepparam · main.prod.bicepparam · main.demo.bicepparam
   modules/  observability · identity · keyvault · cosmos
             containerapps · appservice (fallback) · apim · apim-api · staticwebapp
-  policies/ customer-product.xml · admin-product.xml
+  policies/ customer-product.xml · admin-product.xml · customer-api-rate-limit.xml
 ```
 
-Every deployment runs `what-if` before `create`. Parameters carry no secrets. Resources are tagged `project`, `env`, `owner` so cost can be filtered and the environment deleted in one command.
+Every deployment runs `what-if` before `create`. Parameters carry no secrets. Resources are tagged `project`, `env`, `owner` so cost can be filtered and the environment deleted in one command. Live apply region for this subscription is **`eastus2`**; see `docs/deployment.md` and `docs/assumptions.md`.
 
 ---
 
@@ -1004,10 +1002,10 @@ Every deployment runs `what-if` before `create`. Parameters carry no secrets. Re
 ```mermaid
 flowchart LR
     S1["1 BUILD<br/>restore, analyzers,<br/>warnings as errors"]
-    S2["2 TEST<br/>xUnit + engine +<br/>property-based, coverage gate"]
-    S3["3 PACKAGE<br/>images, OpenAPI,<br/>SPA bundle"]
+    S2["2 TEST<br/>xUnit + engine + BDD<br/>in process"]
+    S3["3 PACKAGE<br/>container images,<br/>OpenAPI artifacts"]
     S4["4 PROVISION<br/>Bicep what-if<br/>published, then create"]
-    S5["5 DEPLOY<br/>images, SPA,<br/>APIM import + policies"]
+    S5["5 DEPLOY<br/>ACR images,<br/>Container App update"]
     S6["6 SEED<br/>verify the startup seed<br/>through readiness"]
     S7["7 SMOKE<br/>health, gateway auth,<br/>seeded policy through APIM"]
     S8["8 VERIFY<br/>backend health, results,<br/>optional teardown"]
@@ -1121,23 +1119,32 @@ The last three prove the *architecture* rather than the arithmetic: tampering is
 
 ---
 
-## 20. Frontend
+## 20. Frontend (deferred)
 
-React 18 + TypeScript + Vite + Material UI on Static Web Apps. Catalog → cart → coupon input (debounced 400 ms, in-flight request aborted) → preview via APIM → subtotal, discount, total plus any rejection reason and near-miss hint → submit → confirmation at the **server** total.
+A React SPA on Static Web Apps was planned as the interactive demo shell: catalog → cart → coupon input (debounced preview via APIM) → submit → confirmation at the **server** total, with MSAL auth code + PKCE and **no** client-side pricing rules.
 
-The SPA holds **no** pricing rules. Every previewed price is a hint; the confirmation total comes from the order response. MSAL with authorization code + PKCE; no secret ships to the browser.
+That UI is **not in this repository**. The Free Static Web App resource is still provisioned for CDN/hosting readiness, and catalog caching still relies on SWA CDN plus Order API `ETag` / `Cache-Control` on `GET /v1/pizzas` (**P-12**). Callers exercise the same APIM contract with Scalar, curl, BDD, or `scripts/smoke-deployed-stack.ps1`.
 
 ---
 
 ## 21. Repository layout
 
 ```text
-src/  Api · Application · Domain · Engine · Infrastructure · OrderApi · web
-tests/ UnitTests · EngineTests · Benchmarks · ApiTests · Bdd
-infra/ bicep (delivery) · terraform (documented alternative, not wired to CI)
-data/  pizzas.json · policies.seed.json
-docs/  this file · deployment · auth
+src/
+  CouponService.Api            # HTTP host, auth, seeding, health
+  CouponService.Application    # Use cases behind clean interfaces
+  CouponService.Domain         # Cart, money, policy AST shapes
+  CouponService.Engine         # Parser, validator, compiler, facts (no Azure refs)
+  CouponService.Infrastructure # Cosmos + in-memory adapters, Serilog
+  OrderApi                     # Thin checkout stand-in
+tests/                         # UnitTests · EngineTests · ApiTests · Bdd · IntegrationTests
+infra/bicep/                   # Delivery IaC
+infra/terraform/               # Documented alternative — not wired to CI
+data/                          # pizzas.json catalog snapshot
+docs/                          # Architecture, deployment, auth, API
+scripts/                       # setup-entra-app · seed-policies · smoke-deployed-stack
 azure-pipelines.yml
+CouponService.slnx
 ```
 
 `Domain` holds the cart, the policy AST and the price breakdown; `Engine` holds the parser, validator, compiler, fact registry and manifest; `Infrastructure` holds the Cosmos repositories and Serilog wiring. `Engine` has no Azure dependency at all, which is why its tests need no emulator.
@@ -1191,13 +1198,15 @@ azure-pipelines.yml
 
 ## 24. Delivery waves
 
-1. **Engine** — grammar, parser, validator, compiler, effects, unit and property tests.
-2. **Persistence and lifecycle** — Cosmos model, reserve/confirm/release, admin API, simulate and shadow.
-3. **Edges** — auth, APIM, Order API, contract tests.
-4. **Automation** — Bicep, pipeline, startup seeding, post-deploy smoke.
-5. **Frontend**, then **docs, alerts and walkthrough**.
+| Wave | Focus | Status |
+|---|---|---|
+| 1 | Engine — grammar, parser, validator, compiler, effects, unit and property tests | Done |
+| 2 | Persistence and lifecycle — Cosmos model, reserve/confirm/release, admin API | Done (simulate/shadow HTTP deferred) |
+| 3 | Edges — auth, APIM, Order API, contract tests | Done |
+| 4 | Automation — Bicep, pipeline, startup seeding, post-deploy smoke | Done |
+| 5 | Frontend, alerts workbook | Deferred |
 
-Waves 1 and 2 need no Azure access, so implementation can start immediately; the environment is only required from wave 3.
+Waves 1 and 2 need no Azure access; the environment is only required from wave 3.
 
 ---
 
@@ -1209,9 +1218,10 @@ Waves 1 and 2 need no Azure access, so implementation can start immediately; the
 4. No payment provider; the confirm step stands in for "payment captured".
 5. Single currency, `EUR` default, configurable. No tax line unless a rate is specified.
 6. Rejected coupons default to `AllowWithoutDiscount` at checkout.
-7. Policies are seeded at deployment and managed through the admin API; no admin UI.
+7. Policies are seeded at service startup (`Seeding__Enabled`) and managed through the admin API; no admin UI.
 8. Azure DevOps project, an enabled subscription and app-registration permission are provided before wave 3.
-9. Demo environment only. No production hardening, HA or DR commitments.
+9. Demo / non-prod is the primary green path on this subscription; production CD is authored and awaits Container Apps quota.
+10. React SPA is deferred; APIM + Scalar + smoke scripts demonstrate the public contract.
 
 ---
 
