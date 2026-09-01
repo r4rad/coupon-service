@@ -1,9 +1,15 @@
+using Microsoft.Extensions.Configuration;
 using Scalar.AspNetCore;
 
 namespace OrderApi.OpenApi;
 
 internal static class OpenApiUiExtensions
 {
+    internal static bool IsApiDocumentationEnabled(IWebHostEnvironment environment, IConfiguration configuration) =>
+        environment.IsDevelopment()
+        || environment.IsEnvironment("Testing")
+        || configuration.GetValue("ApiDocumentation:Enabled", false);
+
     internal static WebApplication MapApiDocumentation(this WebApplication app, string title)
     {
         app.MapOpenApi();
