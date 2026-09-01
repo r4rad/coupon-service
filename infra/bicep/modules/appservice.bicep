@@ -29,8 +29,14 @@ param jwtAuthority string
 @description('Coupon Service API audience / Application ID URI.')
 param couponApiAudience string
 
+@description('Coupon Service app registration client id, the aud value of version 2 tokens.')
+param couponApiClientId string = ''
+
 @description('OAuth scope the Order API requests with managed identity (AC-7.7).')
 param couponServiceScope string
+
+@description('Seeds the deterministic policy set as the Coupon Service starts (AC-9.5, AC-9.6).')
+param seedPoliciesOnStartup bool = true
 
 @description('Resource tags. Must include project, env and owner.')
 param tags object
@@ -85,12 +91,20 @@ resource couponApp 'Microsoft.Web/sites@2023-12-01' = {
           value: couponApiAudience
         }
         {
+          name: 'Authentication__Jwt__ClientId'
+          value: couponApiClientId
+        }
+        {
           name: 'Authentication__Jwt__Issuer'
           value: jwtAuthority
         }
         {
           name: 'Authentication__TestToken__Enabled'
           value: 'false'
+        }
+        {
+          name: 'Seeding__Enabled'
+          value: string(seedPoliciesOnStartup)
         }
       ]
     }

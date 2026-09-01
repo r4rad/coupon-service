@@ -26,14 +26,23 @@ param orderIdentityClientId string
 @description('Public placeholder image so first deploy into an empty RG does not deadlock on an empty ACR (P-11).')
 param placeholderImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
 
+@description('ACR login server. Empty skips registry identity wiring until the first image push.')
+param acrLoginServer string = ''
+
 @description('Entra authority used by the Coupon Service JwtBearer middleware (AC-7.6).')
 param jwtAuthority string
 
 @description('Coupon Service API audience / Application ID URI.')
 param couponApiAudience string
 
+@description('Coupon Service app registration client id, the aud value of version 2 tokens.')
+param couponApiClientId string = ''
+
 @description('OAuth scope the Order API requests with managed identity (AC-7.7).')
 param couponServiceScope string
+
+@description('Seeds the deterministic policy set as the Coupon Service starts (AC-9.5, AC-9.6).')
+param seedPoliciesOnStartup bool = true
 
 @description('Resource tags. Must include project, env and owner.')
 param tags object
@@ -78,6 +87,12 @@ resource couponApp 'Microsoft.App/containerApps@2024-03-01' = {
         allowInsecure: false
       }
       activeRevisionsMode: 'Single'
+      registries: acrLoginServer == '' ? [] : [
+        {
+          server: acrLoginServer
+          identity: couponIdentityId
+        }
+      ]
     }
     template: {
       containers: [
@@ -106,12 +121,20 @@ resource couponApp 'Microsoft.App/containerApps@2024-03-01' = {
               value: couponApiAudience
             }
             {
+              name: 'Authentication__Jwt__ClientId'
+              value: couponApiClientId
+            }
+            {
               name: 'Authentication__Jwt__Issuer'
               value: jwtAuthority
             }
             {
               name: 'Authentication__TestToken__Enabled'
               value: 'false'
+            }
+            {
+              name: 'Seeding__Enabled'
+              value: string(seedPoliciesOnStartup)
             }
           ]
         }
@@ -144,6 +167,12 @@ resource orderApp 'Microsoft.App/containerApps@2024-03-01' = {
         allowInsecure: false
       }
       activeRevisionsMode: 'Single'
+      registries: acrLoginServer == '' ? [] : [
+        {
+          server: acrLoginServer
+          identity: orderIdentityId
+        }
+      ]
     }
     template: {
       containers: [

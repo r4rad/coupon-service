@@ -119,6 +119,10 @@ function New-TicketPrompt {
     $P = New-Object System.Collections.Generic.List[string]
     $id = $Ticket.id
     $branchSlug = Get-Slug -Text $Ticket.title -MaxLength 40
+    $baseBranch = 'main'
+    if ($Ticket.PSObject.Properties['baseBranch'] -and $Ticket.baseBranch) {
+        $baseBranch = [string]$Ticket.baseBranch
+    }
 
     $P.Add("Implement ticket $id in this repository, end to end.")
     $P.Add('')
@@ -136,7 +140,7 @@ function New-TicketPrompt {
     $P.Add('     where the two differ. Consult the architecture document for the reasoning behind a decision.')
     $P.Add('')
     $P.Add('Then:')
-    $P.Add("  1. Create branch ticket/$id-$branchSlug from the latest main.")
+    $P.Add("  1. Create branch ticket/$id-$branchSlug from the latest $baseBranch.")
     $P.Add('  2. Implement the ticket, touching only these paths:')
     foreach ($s in $Ticket.scope) { $P.Add("       $s") }
     $P.Add('     Plus your own new test files, and the checkboxes in .kiro/specs/coupon-service/tasks.md.')
@@ -159,7 +163,11 @@ function New-TicketPrompt {
     $P.Add("     building - with subjects of the form `"$($id): <imperative summary>`". Do not squash the")
     $P.Add('     branch into a single commit; the granularity is what makes the pull request reviewable.')
     $P.Add('     Add no trailer of any kind: no Co-Authored-By, no Signed-off-by, no tool attribution.')
-    $P.Add("  7. Push the branch and open a pull request titled `"$($id): $($Ticket.title)`".")
+    $P.Add("  7. Push the branch and open a pull request against $baseBranch titled `"$($id): $($Ticket.title)`".")
+    if ($baseBranch -eq 'develop') {
+        $P.Add('     Do not open the PR against main. The operator merges develop to main separately after')
+        $P.Add('     the develop CD path is green.')
+    }
     $P.Add('     In the body, list every acceptance criterion satisfied, anything deliberately deferred,')
     $P.Add('     and any out-of-scope change you had to make.')
     $P.Add('')

@@ -6,6 +6,9 @@ param location string = 'westeurope'
 @description('Static Web Apps Free SKU region. May differ from location when SWA is unavailable there.')
 param staticWebAppLocation string = 'westeurope'
 
+@description('Container Apps environment region. Empty inherits location. Override only when the subscription one-CAE-per-region quota forces the environment into a second region (CS-29).')
+param containerAppsLocation string = ''
+
 @description('Short environment label applied to names and the env tag.')
 param environmentName string = 'demo'
 
@@ -42,6 +45,12 @@ param entraTenantId string = tenant().tenantId
 
 @description('Coupon Service API Application ID URI (JWT audience and MI token resource).')
 param couponApiAudience string = 'api://coupon-service'
+
+@description('Coupon Service app registration client id. Version 2 tokens carry this GUID in aud instead of the Application ID URI, so it must be a valid audience. Emitted by scripts/setup-entra-app.ps1.')
+param couponApiClientId string = ''
+
+@description('Seeds the deterministic policy set as the Coupon Service starts (AC-9.5, AC-9.6). The policy store is per-instance, so seeding belongs with the instance rather than in a pipeline step.')
+param seedPoliciesOnStartup bool = true
 
 @description('Allowed SPA origin for APIM CORS on the customer product.')
 param spaOrigin string = 'https://localhost:5173'
@@ -106,6 +115,10 @@ module acr 'modules/acr.bicep' = {
   params: {
     location: location
     uniqueSuffix: uniqueSuffix
+    pullPrincipalIds: [
+      identity.outputs.couponIdentityPrincipalId
+      identity.outputs.orderIdentityPrincipalId
+    ]
     tags: tags
   }
 }
@@ -116,10 +129,16 @@ var jwtIssuer = jwtAuthority
 var openIdConfigUrl = '${jwtAuthority}/.well-known/openid-configuration'
 var couponServiceScope = '${couponApiAudience}/.default'
 
+// APIM policy XML cannot conditionally omit an <audience>, so fall back to the Application ID
+// URI when the client id is unknown. That yields a duplicate audience rather than an empty one.
+var couponApiClientIdOrAudience = empty(couponApiClientId) ? couponApiAudience : couponApiClientId
+
+var containerAppsRegion = containerAppsLocation == '' ? location : containerAppsLocation
+
 module containerapps 'modules/containerapps.bicep' = if (hostingMode == 'containerApps') {
   name: 'containerapps'
   params: {
-    location: location
+    location: containerAppsRegion
     environmentName: environmentName
     logAnalyticsWorkspaceName: observability.outputs.logAnalyticsName
     appInsightsConnectionString: observability.outputs.appInsightsConnectionString
@@ -128,9 +147,12 @@ module containerapps 'modules/containerapps.bicep' = if (hostingMode == 'contain
     orderIdentityId: identity.outputs.orderIdentityId
     orderIdentityClientId: identity.outputs.orderIdentityClientId
     placeholderImage: placeholderImage
+    acrLoginServer: acr.outputs.acrLoginServer
     jwtAuthority: jwtAuthority
     couponApiAudience: couponApiAudience
+    couponApiClientId: couponApiClientId
     couponServiceScope: couponServiceScope
+    seedPoliciesOnStartup: seedPoliciesOnStartup
     tags: tags
   }
 }
@@ -148,7 +170,9 @@ module appservice 'modules/appservice.bicep' = if (hostingMode == 'appService') 
     orderIdentityClientId: identity.outputs.orderIdentityClientId
     jwtAuthority: jwtAuthority
     couponApiAudience: couponApiAudience
+    couponApiClientId: couponApiClientId
     couponServiceScope: couponServiceScope
+    seedPoliciesOnStartup: seedPoliciesOnStartup
     tags: tags
   }
 }
@@ -181,6 +205,7 @@ module apimApi 'modules/apim-api.bicep' = {
     orderBackendUrl: orderBackendUrl
     entraTenantId: entraTenantId
     couponApiAudience: couponApiAudience
+    couponApiClientId: couponApiClientIdOrAudience
     spaOrigin: spaOrigin
     openIdConfigUrl: openIdConfigUrl
     jwtIssuer: jwtIssuer
@@ -197,13 +222,17 @@ module staticwebapp 'modules/staticwebapp.bicep' = {
 }
 
 output hostingMode string = hostingMode
+output environmentName string = environmentName
 output apimGatewayUrl string = apim.outputs.apimGatewayUrl
 output cosmosEndpoint string = cosmos.outputs.cosmosEndpoint
 output keyVaultUri string = keyvault.outputs.keyVaultUri
 output acrLoginServer string = acr.outputs.acrLoginServer
+output acrName string = acr.outputs.acrName
 output staticWebAppHostname string = staticwebapp.outputs.staticWebAppDefaultHostname
 output couponBackendUrl string = couponBackendUrl
 output orderBackendUrl string = orderBackendUrl
+output couponAppName string = hostingMode == 'containerApps' ? containerapps!.outputs.couponAppName : appservice!.outputs.couponAppName
+output orderAppName string = hostingMode == 'containerApps' ? containerapps!.outputs.orderAppName : appservice!.outputs.orderAppName
 output appInsightsConnectionString string = observability.outputs.appInsightsConnectionString
 output orderIdentityClientId string = identity.outputs.orderIdentityClientId
 output couponIdentityClientId string = identity.outputs.couponIdentityClientId

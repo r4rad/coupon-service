@@ -36,12 +36,24 @@ public sealed class LiveProvisionTests
             Assert.Contains("param location = 'eastus2'", envParams, StringComparison.Ordinal);
             Assert.Contains("param staticWebAppLocation = 'eastus2'", envParams, StringComparison.Ordinal);
         }
+
+        // Both env params stay on Container Apps (P-14). This subscription's observed limit is
+        // one CAE globally (MaxNumberOfGlobalEnvironmentsInSubExceeded) plus zero App Service VMs,
+        // so prod still declares containerAppsLocation=eastus for when quota allows a second CAE.
+        var devParams = Read(Path.Combine("infra", "bicep", "main.dev.bicepparam"));
+        var prodParams = Read(Path.Combine("infra", "bicep", "main.prod.bicepparam"));
+        Assert.Contains("param hostingMode = 'containerApps'", devParams, StringComparison.Ordinal);
+        Assert.Contains("param hostingMode = 'containerApps'", prodParams, StringComparison.Ordinal);
+        Assert.DoesNotContain("param containerAppsLocation", devParams, StringComparison.Ordinal);
+        Assert.Contains("param containerAppsLocation = 'eastus'", prodParams, StringComparison.Ordinal);
+        Assert.Contains("containerAppsLocation == '' ? location : containerAppsLocation", main, StringComparison.Ordinal);
     }
 
     [Fact]
     public void Leading_name_salt_changes_the_truncated_key_vault_name()
     {
         // take('kv-coupon-demo-' + suffix, 24) keeps only 9 suffix chars; a trailing salt is lost.
+        // The compiled expression in main.bicep + keyvault.bicep must place the salt first (CS-29).
         const string prefix = "kv-coupon-demo-";
         const string unique = "r4hxkv774xxxx";
 
@@ -55,6 +67,12 @@ public sealed class LiveProvisionTests
 
         Assert.Equal(unsalt, trailing);
         Assert.NotEqual(unsalt, leading);
+
+        var main = Read(Path.Combine("infra", "bicep", "main.bicep"));
+        var keyVault = Read(Path.Combine("infra", "bicep", "modules", "keyvault.bicep"));
+        Assert.Contains("take('v29${uniqueString(resourceGroup().id)}', 13)", main, StringComparison.Ordinal);
+        Assert.Contains("take('kv-coupon-${environmentName}-${uniqueSuffix}', 24)", keyVault, StringComparison.Ordinal);
+        Assert.DoesNotContain("take('${uniqueString(resourceGroup().id)}", main, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -86,5 +104,30 @@ public sealed class LiveProvisionTests
         Assert.Contains("EnableServerless", docs, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("mcr.microsoft.com/k8se/quickstart:latest", docs, StringComparison.Ordinal);
         Assert.Contains("rg-coupon-demo", docs, StringComparison.Ordinal);
+        Assert.Contains("rg-coupon-prod", docs, StringComparison.Ordinal);
+        Assert.Contains("main.dev.bicepparam", docs, StringComparison.Ordinal);
+        Assert.Contains("main.prod.bicepparam", docs, StringComparison.Ordinal);
+        Assert.Contains("User Access Administrator", docs, StringComparison.Ordinal);
+        Assert.Contains("leading", docs, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("take(", docs, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Acr_grants_pull_to_app_identities_and_container_apps_register_the_login_server()
+    {
+        // CS-29 Deploy pushes to ACR; apps must pull with managed identity (no admin user).
+        var acr = Read(Path.Combine("infra", "bicep", "modules", "acr.bicep"));
+        Assert.Contains("pullPrincipalIds", acr, StringComparison.Ordinal);
+        Assert.Contains("7f951dda-4ed3-4680-a7ca-43fe172d538d", acr, StringComparison.Ordinal);
+
+        var containerApps = Read(Path.Combine("infra", "bicep", "modules", "containerapps.bicep"));
+        Assert.Contains("param acrLoginServer string", containerApps, StringComparison.Ordinal);
+        Assert.Contains("registries:", containerApps, StringComparison.Ordinal);
+
+        var main = Read(Path.Combine("infra", "bicep", "main.bicep"));
+        Assert.Contains("pullPrincipalIds:", main, StringComparison.Ordinal);
+        Assert.Contains("acrLoginServer: acr.outputs.acrLoginServer", main, StringComparison.Ordinal);
+        Assert.Contains("output couponAppName string", main, StringComparison.Ordinal);
+        Assert.Contains("output acrName string", main, StringComparison.Ordinal);
     }
 }

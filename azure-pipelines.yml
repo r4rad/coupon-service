@@ -244,41 +244,75 @@ stages:
     condition: and(succeeded(), eq(variables['isCD'], 'true'))
     jobs:
       - job: Deploy
-        displayName: Update apps and wait for readiness
+        displayName: Build images, update apps, wait for readiness
         pool:
           vmImage: ubuntu-latest
         steps:
           - checkout: self
 
           - download: current
-            artifact: coupon-api
-
-          - download: current
-            artifact: order-api
-
-          - download: current
             artifact: provision-outputs
 
-          - bash: |
-              set -euo pipefail
-              # Provision leaves apps on the public placeholder image (P-11).
-              # Container image build/push from a Dockerfile is wired in CS-29.
-              COUPON_URL=$(jq -r '.couponBackendUrl.value // empty' "$(Pipeline.Workspace)/provision-outputs/outputs.json")
-              if [ -z "$COUPON_URL" ]; then
-                echo "couponBackendUrl missing from provision outputs; cannot probe readiness."
-                exit 1
-              fi
-              echo "##vso[task.setvariable variable=couponBackendUrl]$COUPON_URL"
-              ORDER_URL=$(jq -r '.orderBackendUrl.value // empty' "$(Pipeline.Workspace)/provision-outputs/outputs.json")
-              echo "##vso[task.setvariable variable=orderBackendUrl]$ORDER_URL"
-              APIM_URL=$(jq -r '.apimGatewayUrl.value // empty' "$(Pipeline.Workspace)/provision-outputs/outputs.json")
-              echo "##vso[task.setvariable variable=apimGatewayUrl]$APIM_URL"
-            displayName: Read provision outputs for readiness
+          - task: AzureCLI@2
+            displayName: Build and push images to ACR then update Container Apps
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -euo pipefail
+                OUTPUTS="$(Pipeline.Workspace)/provision-outputs/outputs.json"
+                HOSTING=$(jq -r '.hostingMode.value // "containerApps"' "$OUTPUTS")
+                ACR_NAME=$(jq -r '.acrName.value // empty' "$OUTPUTS")
+                ACR_SERVER=$(jq -r '.acrLoginServer.value // empty' "$OUTPUTS")
+                COUPON_APP=$(jq -r '.couponAppName.value // empty' "$OUTPUTS")
+                ORDER_APP=$(jq -r '.orderAppName.value // empty' "$OUTPUTS")
+                COUPON_URL=$(jq -r '.couponBackendUrl.value // empty' "$OUTPUTS")
+                ORDER_URL=$(jq -r '.orderBackendUrl.value // empty' "$OUTPUTS")
+                APIM_URL=$(jq -r '.apimGatewayUrl.value // empty' "$OUTPUTS")
+                if [ -z "$COUPON_URL" ]; then
+                  echo "couponBackendUrl missing from provision outputs; cannot deploy."
+                  exit 1
+                fi
+                echo "##vso[task.setvariable variable=couponBackendUrl]$COUPON_URL"
+                echo "##vso[task.setvariable variable=orderBackendUrl]$ORDER_URL"
+                echo "##vso[task.setvariable variable=apimGatewayUrl]$APIM_URL"
+
+                if [ "$HOSTING" != "containerApps" ]; then
+                  echo "hostingMode=$HOSTING; image push is Container Apps only in this pipeline."
+                  exit 0
+                fi
+                if [ -z "$ACR_NAME" ] || [ -z "$ACR_SERVER" ] || [ -z "$COUPON_APP" ] || [ -z "$ORDER_APP" ]; then
+                  echo "ACR or Container App names missing from provision outputs."
+                  exit 1
+                fi
+
+                TAG="$(Build.BuildId)"
+                az acr login --name "$ACR_NAME"
+                docker build \
+                  --file src/CouponService.Api/Dockerfile \
+                  --tag "${ACR_SERVER}/coupon-api:${TAG}" \
+                  .
+                docker build \
+                  --file src/OrderApi/Dockerfile \
+                  --tag "${ACR_SERVER}/order-api:${TAG}" \
+                  .
+                docker push "${ACR_SERVER}/coupon-api:${TAG}"
+                docker push "${ACR_SERVER}/order-api:${TAG}"
+
+                az containerapp update \
+                  --name "$COUPON_APP" \
+                  --resource-group "$(resourceGroupName)" \
+                  --image "${ACR_SERVER}/coupon-api:${TAG}"
+                az containerapp update \
+                  --name "$ORDER_APP" \
+                  --resource-group "$(resourceGroupName)" \
+                  --image "${ACR_SERVER}/order-api:${TAG}"
 
           - bash: |
               set -euo pipefail
               # Readiness probe must pass before Seed (section 18).
-              for i in $(seq 1 30); do
+              for i in $(seq 1 36); do
                 if curl -fsS "${COUPON_BACKEND_URL}/v1/health/ready"; then
                   echo "Coupon API ready."
                   exit 0
@@ -308,124 +342,136 @@ stages:
             artifact: provision-outputs
 
           - pwsh: |
+              $ErrorActionPreference = 'Stop'
+
+              function Get-ConfiguredValue {
+                param([string] $Value)
+                if ([string]::IsNullOrWhiteSpace($Value)) { return $null }
+                if ($Value -match '^\$\([A-Za-z0-9_]+\)$') { return $null }
+                return $Value.Trim()
+              }
+
               $outputsPath = Join-Path $env:PIPELINE_WORKSPACE 'provision-outputs/outputs.json'
               $outputs = Get-Content -LiteralPath $outputsPath -Raw | ConvertFrom-Json
-              $base = $env:ADMIN_API_BASE_URL
-              if ([string]::IsNullOrWhiteSpace($base)) {
-                $apim = [string]$outputs.apimGatewayUrl.value
-                if (-not [string]::IsNullOrWhiteSpace($apim)) {
-                  $base = $apim.TrimEnd('/') + '/coupons'
-                }
-                else {
-                  $base = [string]$outputs.couponBackendUrl.value
-                }
+
+              $base = Get-ConfiguredValue -Value $env:ADMIN_API_BASE_URL
+              if ($null -eq $base) {
+                $base = Get-ConfiguredValue -Value ([string]$outputs.couponBackendUrl.value)
               }
-              if ([string]::IsNullOrWhiteSpace($base)) {
-                throw 'Admin API base URL could not be resolved from AdminApiBaseUrl or provision outputs.'
+
+              if ($null -eq $base) {
+                throw 'Coupon Service base URL could not be resolved from AdminApiBaseUrl or couponBackendUrl.'
               }
-              Write-Host "Seeding against $base"
-              Write-Host "##vso[task.setvariable variable=resolvedAdminBaseUrl]$base"
-              $order = $env:ORDER_API_BASE_URL
-              if ([string]::IsNullOrWhiteSpace($order)) {
-                $orderApim = [string]$outputs.apimGatewayUrl.value
-                if (-not [string]::IsNullOrWhiteSpace($orderApim)) {
-                  $order = $orderApim.TrimEnd('/') + '/orders'
-                }
-                else {
-                  $order = [string]$outputs.orderBackendUrl.value
-                }
+
+              $uri = $null
+              if (-not [Uri]::TryCreate($base, [UriKind]::Absolute, [ref]$uri) -or
+                  ($uri.Scheme -ne [Uri]::UriSchemeHttp -and $uri.Scheme -ne [Uri]::UriSchemeHttps)) {
+                throw "Coupon Service base URL is not an absolute http(s) URI: '$base'"
               }
-              Write-Host "##vso[task.setvariable variable=resolvedOrderBaseUrl]$order"
-            displayName: Resolve admin and order base URLs
+
+              # The service seeds itself as it starts, so this stage verifies rather than writes.
+              # The readiness probe is anonymous, which keeps CD free of an admin credential.
+              $readyUrl = "$($base.TrimEnd('/'))/v1/health/ready"
+              Write-Host "Verifying deterministic policy seed via $readyUrl"
+
+              $expected = (Get-Content -LiteralPath (Join-Path $env:BUILD_SOURCESDIRECTORY 'src/CouponService.Api/Seeding/SeedPolicies.json') -Raw |
+                ConvertFrom-Json).Count
+              Write-Host "Expecting $expected seeded policies."
+
+              for ($attempt = 1; $attempt -le 30; $attempt++) {
+                $status = 0
+                $body = Invoke-RestMethod -Uri $readyUrl -Method Get -SkipHttpErrorCheck -StatusCodeVariable status
+                if ([int]$status -eq 200) {
+                  Write-Host "Seed verified: readiness reports healthy after $attempt attempt(s)."
+                  exit 0
+                }
+
+                Write-Host "Attempt $attempt : HTTP $status $($body | ConvertTo-Json -Compress -Depth 5)"
+                Start-Sleep -Seconds 10
+              }
+
+              throw "Readiness never reported a healthy policy seed. Check the policy-seed health check and the Seeding__Enabled setting on the Coupon Service."
+            displayName: Verify deterministic policy seed (AC-9.5, AC-9.6)
             env:
               PIPELINE_WORKSPACE: $(Pipeline.Workspace)
+              BUILD_SOURCESDIRECTORY: $(Build.SourcesDirectory)
               ADMIN_API_BASE_URL: $(AdminApiBaseUrl)
-              ORDER_API_BASE_URL: $(OrderApiBaseUrl)
-
-          - task: PowerShell@2
-            displayName: Seed policies via admin API (AC-9.5, AC-9.6)
-            inputs:
-              targetType: filePath
-              filePath: scripts/seed-policies.ps1
-              arguments: >-
-                -BaseUrl "$(resolvedAdminBaseUrl)"
-                -BearerToken "$(AdminApiBearerToken)"
-              pwsh: true
-
-  # --- 7 BDD (CD only) ---
-  - stage: Bdd
-    displayName: '7 BDD'
+  # --- 7 SMOKE (CD only) ---
+  # The Reqnroll scenarios run in process in the Test stage, where the clock and the policy
+  # store are controllable. A deployed service offers neither, so this stage verifies the
+  # deployment instead of re-running behaviour. See .kiro/specs/deployed-stack-smoke/bugfix.md.
+  - stage: Smoke
+    displayName: '7 Smoke'
     dependsOn: Seed
     condition: and(succeeded(), eq(variables['isCD'], 'true'))
     jobs:
-      - job: Bdd
-        displayName: Reqnroll through APIM
+      - job: Smoke
+        displayName: Smoke the deployed stack through APIM
         pool:
           vmImage: ubuntu-latest
-        variables:
-          # Prefer explicit ADO variables; Seed also writes guidance in docs for CS-29.
-          bddCouponBaseUrl: $(AdminApiBaseUrl)
-          bddOrderBaseUrl: $(OrderApiBaseUrl)
         steps:
           - checkout: self
 
           - download: current
             artifact: provision-outputs
 
-          - pwsh: |
-              $outputsPath = Join-Path $env:PIPELINE_WORKSPACE 'provision-outputs/outputs.json'
-              $outputs = Get-Content -LiteralPath $outputsPath -Raw | ConvertFrom-Json
-              $coupon = $env:ADMIN_API_BASE_URL
-              if ([string]::IsNullOrWhiteSpace($coupon)) {
-                $apim = [string]$outputs.apimGatewayUrl.value
-                if (-not [string]::IsNullOrWhiteSpace($apim)) {
-                  $coupon = $apim.TrimEnd('/') + '/coupons'
+          # AzureCLI@2 rather than pwsh, because the smoke needs a real Entra token and only
+          # the service connection can mint one. Resolution and invocation stay in one step so
+          # no URL is handed between steps through a variable that can expand empty.
+          - task: AzureCLI@2
+            displayName: Smoke health, gateway auth and a seeded policy
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: pscore
+              scriptLocation: inlineScript
+              inlineScript: |
+                $ErrorActionPreference = 'Stop'
+
+                function Get-ConfiguredValue {
+                  param([string] $Value)
+                  if ([string]::IsNullOrWhiteSpace($Value)) { return $null }
+                  if ($Value -match '^\$\([A-Za-z0-9_]+\)$') { return $null }
+                  return $Value.Trim()
                 }
-                else {
-                  $coupon = [string]$outputs.couponBackendUrl.value
+
+                $outputsPath = Join-Path $env:PIPELINE_WORKSPACE 'provision-outputs/outputs.json'
+                $outputs = Get-Content -LiteralPath $outputsPath -Raw | ConvertFrom-Json
+
+                $coupon = Get-ConfiguredValue -Value $env:SMOKE_COUPON_BASE_URL
+                $order = Get-ConfiguredValue -Value $env:SMOKE_ORDER_BASE_URL
+
+                if ($null -eq $coupon -or $null -eq $order) {
+                  $apim = Get-ConfiguredValue -Value ([string]$outputs.apimGatewayUrl.value)
+                  if ($null -eq $apim) {
+                    throw 'apimGatewayUrl is absent from the provision outputs, so there is no gateway to smoke. Set SmokeCouponBaseUrl and SmokeOrderBaseUrl to smoke a different target.'
+                  }
+
+                  $gateway = $apim.TrimEnd('/')
+                  if ($null -eq $coupon) { $coupon = $gateway + '/coupons' }
+                  if ($null -eq $order) { $order = $gateway + '/orders' }
                 }
-              }
-              $order = $env:ORDER_API_BASE_URL
-              if ([string]::IsNullOrWhiteSpace($order)) {
-                $apim = [string]$outputs.apimGatewayUrl.value
-                if (-not [string]::IsNullOrWhiteSpace($apim)) {
-                  $order = $apim.TrimEnd('/') + '/orders'
+
+                $audience = Get-ConfiguredValue -Value $env:COUPON_API_AUDIENCE
+                if ($null -eq $audience) {
+                  $audience = Get-ConfiguredValue -Value ([string]$outputs.couponApiAudience.value)
                 }
-                else {
-                  $order = [string]$outputs.orderBackendUrl.value
+                if ($null -eq $audience) {
+                  throw 'couponApiAudience could not be resolved from CouponApiAudience or the provision outputs.'
                 }
-              }
-              Write-Host "##vso[task.setvariable variable=bddCouponBaseUrl]$coupon"
-              Write-Host "##vso[task.setvariable variable=bddOrderBaseUrl]$order"
-            displayName: Resolve BDD base URLs
+
+                $scriptPath = Join-Path $env:BUILD_SOURCESDIRECTORY 'scripts/smoke-deployed-stack.ps1'
+                & $scriptPath -CouponBaseUrl $coupon -OrderBaseUrl $order -Audience $audience
             env:
               PIPELINE_WORKSPACE: $(Pipeline.Workspace)
-              ADMIN_API_BASE_URL: $(AdminApiBaseUrl)
-              ORDER_API_BASE_URL: $(OrderApiBaseUrl)
-
-          - task: UseDotNet@2
-            displayName: Install .NET SDK from global.json
-            inputs:
-              packageType: sdk
-              useGlobalJson: true
-
-          - task: DotNetCoreCLI@2
-            displayName: Reqnroll BDD against deployed stack
-            inputs:
-              command: test
-              projects: tests/CouponService.Bdd/CouponService.Bdd.csproj
-              arguments: --configuration Release
-              publishTestResults: true
-            env:
-              BDD_Bdd__Mode: Http
-              BDD_Bdd__CouponServiceBaseUrl: $(bddCouponBaseUrl)
-              BDD_Bdd__OrderApiBaseUrl: $(bddOrderBaseUrl)
-              BDD_Bdd__TokenStrategy: TestToken
+              BUILD_SOURCESDIRECTORY: $(Build.SourcesDirectory)
+              SMOKE_COUPON_BASE_URL: $(SmokeCouponBaseUrl)
+              SMOKE_ORDER_BASE_URL: $(SmokeOrderBaseUrl)
+              COUPON_API_AUDIENCE: $(CouponApiAudience)
 
   # --- 8 VERIFY (CD only) ---
   - stage: Verify
     displayName: '8 Verify'
-    dependsOn: Bdd
+    dependsOn: Smoke
     condition: and(succeeded(), eq(variables['isCD'], 'true'))
     jobs:
       - job: Verify
@@ -436,15 +482,51 @@ stages:
           - download: current
             artifact: provision-outputs
 
-          - bash: |
-              set -euo pipefail
-              COUPON_URL="${ADMIN_API_BASE_URL:-}"
-              if [ -z "$COUPON_URL" ]; then
-                COUPON_URL=$(jq -r '.couponBackendUrl.value // empty' "$(Pipeline.Workspace)/provision-outputs/outputs.json")
-              fi
-              curl -fsS "${COUPON_URL}/v1/health/live"
-              curl -fsS "${COUPON_URL}/v1/health/ready"
-              echo "Smoke checks passed. Optional teardown is not performed (demo environment retained)."
+          # Same empty-variable trap as Seed/Smoke: when AdminApiBaseUrl is unset, ADO expands
+          # $(AdminApiBaseUrl) to the literal string, which is non-empty for bash and becomes a
+          # "Bad hostname" for curl. Resolve and validate in one pwsh step against the backend.
+          - pwsh: |
+              $ErrorActionPreference = 'Stop'
+
+              function Get-ConfiguredValue {
+                param([string] $Value)
+                if ([string]::IsNullOrWhiteSpace($Value)) { return $null }
+                if ($Value -match '^\$\([A-Za-z0-9_]+\)$') { return $null }
+                return $Value.Trim()
+              }
+
+              $outputsPath = Join-Path $env:PIPELINE_WORKSPACE 'provision-outputs/outputs.json'
+              $outputs = Get-Content -LiteralPath $outputsPath -Raw | ConvertFrom-Json
+
+              $base = Get-ConfiguredValue -Value $env:ADMIN_API_BASE_URL
+              if ($null -eq $base) {
+                $base = Get-ConfiguredValue -Value ([string]$outputs.couponBackendUrl.value)
+              }
+
+              if ($null -eq $base) {
+                throw 'Coupon Service base URL could not be resolved from AdminApiBaseUrl or couponBackendUrl.'
+              }
+
+              $uri = $null
+              if (-not [Uri]::TryCreate($base, [UriKind]::Absolute, [ref]$uri) -or
+                  ($uri.Scheme -ne [Uri]::UriSchemeHttp -and $uri.Scheme -ne [Uri]::UriSchemeHttps)) {
+                throw "Coupon Service base URL is not an absolute http(s) URI: '$base'"
+              }
+
+              $base = $base.TrimEnd('/')
+              Write-Host "Verify against backend $base"
+
+              foreach ($path in @('/v1/health/live', '/v1/health/ready')) {
+                $status = 0
+                $null = Invoke-RestMethod -Uri "$base$path" -Method Get -SkipHttpErrorCheck -StatusCodeVariable status
+                if ([int]$status -ne 200) {
+                  throw "Backend $path returned HTTP $status."
+                }
+                Write-Host "  PASS  $path (HTTP 200)"
+              }
+
+              Write-Host 'Smoke checks passed. Optional teardown is not performed (demo environment retained).'
             displayName: Smoke health endpoints
             env:
+              PIPELINE_WORKSPACE: $(Pipeline.Workspace)
               ADMIN_API_BASE_URL: $(AdminApiBaseUrl)
