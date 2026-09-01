@@ -1,0 +1,356 @@
+{
+  "info": {
+    "name": "Coupon Service — Production (rg-coupon-prod)",
+    "description": "End-to-end tests for the **main / production** stack through Azure APIM.\r\n\r\n## Before you run\r\n\r\n1. Set **gatewayUrl** to your APIM gateway root (no trailing slash).\r\n   Discover: `az apim list -g rg-coupon-prod --query \"[0].gatewayUrl\" -o tsv`\r\n2. Acquire a token and paste into **bearerToken**:\r\n   `az account get-access-token --resource api://coupon-service --query accessToken -o tsv`\r\n3. (Optional admin folder) Set **adminSubscriptionKey** from APIM portal → Subscriptions → admin product.\r\n\r\n## Suggested order\r\n\r\nRun folder **1** → **2** → **3** top to bottom. Use Collection Runner for a one-click E2E pass.\r\n\r\nPowerShell alternative: `./scripts/test-deployed-apis.ps1 -GatewayUrl <gatewayUrl>`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1 Health (no auth)",
+      "item": [
+        {
+          "event": [
+            {
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              },
+              "listen": "test"
+            }
+          ],
+          "name": "GET health/live",
+          "description": "Liveness.",
+          "response": [],
+          "request": {
+            "url": "{{gatewayUrl}}/coupons/v1/health/live",
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "event": [
+            {
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              },
+              "listen": "test"
+            }
+          ],
+          "name": "GET health/ready",
+          "description": "Readiness and startup seed check.",
+          "response": [],
+          "request": {
+            "url": "{{gatewayUrl}}/coupons/v1/health/ready",
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      ],
+      "description": "Anonymous probes — run first."
+    },
+    {
+      "name": "2 Coupons (Bearer token)",
+      "item": [
+        {
+          "event": [
+            {
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test(\"SAVE10 applied\", function () {",
+                  "    pm.expect(body.status).to.eql(\"Applied\");",
+                  "});",
+                  "pm.test(\"Discount is 4.00 on 40.00 basket\", function () {",
+                  "    pm.expect(Number(body.pricing.discount)).to.eql(4);",
+                  "});"
+                ]
+              },
+              "listen": "test"
+            }
+          ],
+          "name": "POST preview — SAVE10",
+          "description": "Advisory preview; 10% off €40 basket.",
+          "response": [],
+          "request": {
+            "url": "{{gatewayUrl}}/coupons/v1/coupons/preview",
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"customerId\":\"postman-customer\",\"cart\":{\"lines\":[{\"lineId\":\"line-1\",\"category\":\"classic\",\"quantity\":2,\"unitPrice\":20.0,\"pizzaId\":\"margherita\"}]},\"confirmedOrderCount\":0,\"code\":\"SAVE10\"}"
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "event": [
+            {
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test(\"OLDCODE rejected\", function () {",
+                  "    pm.expect(body.status).to.eql(\"Rejected\");",
+                  "});"
+                ]
+              },
+              "listen": "test"
+            }
+          ],
+          "name": "POST preview — OLDCODE rejected",
+          "description": "Business rejection still returns HTTP 200.",
+          "response": [],
+          "request": {
+            "url": "{{gatewayUrl}}/coupons/v1/coupons/preview",
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"customerId\":\"postman-customer\",\"cart\":{\"lines\":[{\"lineId\":\"line-1\",\"category\":\"classic\",\"quantity\":1,\"unitPrice\":20.0,\"pizzaId\":\"margherita\"}]},\"confirmedOrderCount\":0,\"code\":\"OLDCODE\"}"
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      ],
+      "description": "Customer product through /coupons. Set collection variable bearerToken first."
+    },
+    {
+      "name": "3 Orders (Bearer token)",
+      "item": [
+        {
+          "event": [
+            {
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Has pizzas\", function () {",
+                  "    pm.expect(pm.response.json().pizzas.length).to.be.above(0);",
+                  "});"
+                ]
+              },
+              "listen": "test"
+            }
+          ],
+          "name": "GET pizzas catalog",
+          "description": "Catalog from data/pizzas.json.",
+          "response": [],
+          "request": {
+            "url": "{{gatewayUrl}}/orders/v1/pizzas",
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "event": [
+            {
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Order created\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set(\"orderId\", body.orderId);",
+                  "    pm.test(\"Server priced total\", function () {",
+                  "        pm.expect(Number(body.total)).to.eql(27.9);",
+                  "    });",
+                  "}"
+                ]
+              },
+              "listen": "test"
+            }
+          ],
+          "name": "POST place order — SAVE10",
+          "description": "Server re-prices; clientTotal is ignored. Saves orderId variable.",
+          "response": [],
+          "request": {
+            "url": "{{gatewayUrl}}/orders/v1/orders",
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"customerId\":\"postman-customer\",\"lines\":[{\"quantity\":2,\"pizzaId\":\"margherita\"},{\"quantity\":1,\"pizzaId\":\"bbq-chicken\"}],\"clientTotal\":1.0,\"couponPolicy\":\"AllowWithoutDiscount\",\"couponCode\":\"SAVE10\"}"
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "event": [
+            {
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Order id matches\", function () {",
+                  "    pm.expect(body.orderId).to.eql(pm.collectionVariables.get(\"orderId\"));",
+                  "});"
+                ]
+              },
+              "listen": "test"
+            }
+          ],
+          "name": "GET order by id",
+          "description": "Uses orderId from place order.",
+          "response": [],
+          "request": {
+            "url": "{{gatewayUrl}}/orders/v1/orders/{{orderId}}",
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      ],
+      "description": "Customer product through /orders. Run Place order before Get order."
+    },
+    {
+      "name": "4 Admin (optional)",
+      "item": [
+        {
+          "name": "GET admin policies",
+          "description": "List seeded policies.",
+          "response": [],
+          "request": {
+            "url": "{{gatewayUrl}}/admin/v1/admin/policies",
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Ocp-Apim-Subscription-Key",
+                "value": "{{adminSubscriptionKey}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "GET policy engine manifest",
+          "description": "Engine capability manifest.",
+          "response": [],
+          "request": {
+            "url": "{{gatewayUrl}}/admin/v1/policy-engine/manifest",
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Ocp-Apim-Subscription-Key",
+                "value": "{{adminSubscriptionKey}}"
+              }
+            ]
+          }
+        }
+      ],
+      "description": "Requires Coupon.Admin on the token AND admin APIM subscription key (Ocp-Apim-Subscription-Key)."
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "type": "string",
+        "key": "token",
+        "value": "{{bearerToken}}"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "gatewayUrl",
+      "value": "https://apim-coupon-prod-v29v5akqgmxy6.azure-api.net"
+    },
+    {
+      "key": "bearerToken",
+      "value": ""
+    },
+    {
+      "key": "orderId",
+      "value": ""
+    },
+    {
+      "key": "tokenAudience",
+      "value": "api://coupon-service"
+    },
+    {
+      "key": "couponApiClientId",
+      "value": "189703ee-da8c-4fa4-8c0d-a53f193283f4"
+    },
+    {
+      "key": "adminSubscriptionKey",
+      "value": ""
+    }
+  ]
+}
