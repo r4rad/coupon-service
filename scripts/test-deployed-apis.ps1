@@ -395,7 +395,7 @@ if (-not $SkipOrder) {
                 $sub = [decimal] $created.Body.subtotal
                 $disc = [decimal] $created.Body.discount
                 $tot = [decimal] $created.Body.total
-                if ($sub -eq 31.00m -and $disc -eq 3.10m -and $tot -eq 27.90m) {
+                if ($sub -eq [decimal]31.00 -and $disc -eq [decimal]3.10 -and $tot -eq [decimal]27.90) {
                     Write-Pass 'order SAVE10 pricing (31.00 - 3.10 = 27.90)'
                 }
                 else {
