@@ -204,8 +204,8 @@ Run folders top to bottom:
 | Folder | Auth | What it proves |
 |--------|------|----------------|
 | **1 Health** | None | Liveness and startup seed |
-| **2 Coupons** | Bearer | SAVE10 preview applied; OLDCODE rejected (HTTP 200) |
-| **3 Orders** | Bearer | Catalog; place order (saves `orderId`); get order |
+| **2 Coupons — all seeded codes** | Bearer | Preview for SAVE10, FLAT5, VEGGIE15, BOGO, EITHER, OLDCODE (rejected), LIMITED1 |
+| **3 Orders — checkout by coupon** | Bearer | Catalog; place order with SAVE10, FLAT5, BOGO, EITHER; get order |
 | **4 Admin** | Bearer + subscription key | Optional — list policies, manifest |
 
 ### Regenerate collections
@@ -242,9 +242,11 @@ Loaded at startup in every deployed environment (`src/CouponService.Api/Seeding/
 |------|-----------|
 | `SAVE10` | 10% off |
 | `FLAT5` | €5 off when subtotal ≥ €20 |
-| `VEGGIE15` | 15% off vegetarian lines |
+| `VEGGIE15` | 15% off vegetarian lines (cap €10); preview cart must use category `Vegetarian` |
+| `BOGO` | Second eligible line free when quantity ≥ 2 |
+| `EITHER` | Best of 15% or €5 flat |
 | `OLDCODE` | Rejected — expired |
-| `LIMITED1` | Rejected after global cap |
+| `LIMITED1` | Applied until global cap of 1 is consumed; preview may show **Rejected** on prod |
 
 ---
 
