@@ -116,6 +116,35 @@ function New-PreviewAppliedOrRejectedTestScript {
     )
 }
 
+function New-AdminSkipPrerequestScript {
+    return @(
+        'const key = pm.collectionVariables.get("adminSubscriptionKey");'
+        'if (!key) {'
+        '    pm.execution.skipRequest();'
+        '}'
+    )
+}
+
+function New-OrderIdSkipPrerequestScript {
+    param([string] $VariableName = 'orderId')
+
+    return @(
+        "const id = pm.collectionVariables.get('$VariableName');"
+        'if (!id) {'
+        '    pm.execution.skipRequest();'
+        '}'
+    )
+}
+
+function New-AdminOkTestScript {
+    return (New-StatusOkTestScript) + @(
+        'const body = pm.response.json();'
+        'pm.test("Response is JSON", function () {'
+        '    pm.expect(body).to.be.an("object");'
+        '});'
+    )
+}
+
 function New-OrderCreatedTestScript {
     param(
         [decimal] $ExpectedTotal,
@@ -146,6 +175,7 @@ function New-RequestItem {
         [string] $Auth = 'inherit',
         [string] $Body,
         [string[]] $TestScript,
+        [string[]] $PrerequestScript,
         [hashtable[]] $ExtraHeaders
     )
 
@@ -186,16 +216,29 @@ function New-RequestItem {
         $item['description'] = $Description
     }
 
+    $events = [System.Collections.Generic.List[object]]::new()
+    if ($PrerequestScript -and $PrerequestScript.Count -gt 0) {
+        $events.Add(@{
+                listen = 'prerequest'
+                script = @{
+                    type = 'text/javascript'
+                    exec = $PrerequestScript
+                }
+            })
+    }
+
     if ($TestScript -and $TestScript.Count -gt 0) {
-        $item['event'] = @(
-            @{
+        $events.Add(@{
                 listen = 'test'
                 script = @{
                     type = 'text/javascript'
                     exec = $TestScript
                 }
-            }
-        )
+            })
+    }
+
+    if ($events.Count -gt 0) {
+        $item['event'] = @($events)
     }
 
     return $item
@@ -370,7 +413,9 @@ function New-Collection {
             ) + $orderCheckoutItems + @(
                 (New-RequestItem -Name 'GET order by id (SAVE10)' -Method 'GET' `
                     -Url '{{gatewayUrl}}/orders/v1/orders/{{orderId}}' `
-                    -Description 'Uses orderId from SAVE10 checkout.' -TestScript $getOrder)
+                    -Description 'Uses orderId from SAVE10 checkout. Skipped when checkout did not run.' `
+                    -PrerequestScript (New-OrderIdSkipPrerequestScript -VariableName 'orderId') `
+                    -TestScript $getOrder)
             )
         }
         @{
@@ -379,12 +424,16 @@ function New-Collection {
             item        = @(
                 (New-RequestItem -Name 'GET admin policies' -Method 'GET' `
                     -Url '{{gatewayUrl}}/admin/v1/admin/policies' `
-                    -Description 'List seeded policies.' -ExtraHeaders @(
+                    -Description 'List seeded policies. Skipped when adminSubscriptionKey is empty.' `
+                    -PrerequestScript (New-AdminSkipPrerequestScript) `
+                    -TestScript (New-AdminOkTestScript) -ExtraHeaders @(
                         @{ key = 'Ocp-Apim-Subscription-Key'; value = '{{adminSubscriptionKey}}' }
                     ))
                 (New-RequestItem -Name 'GET policy engine manifest' -Method 'GET' `
                     -Url '{{gatewayUrl}}/admin/v1/policy-engine/manifest' `
-                    -Description 'Engine capability manifest.' -ExtraHeaders @(
+                    -Description 'Engine capability manifest. Skipped when adminSubscriptionKey is empty.' `
+                    -PrerequestScript (New-AdminSkipPrerequestScript) `
+                    -TestScript (New-AdminOkTestScript) -ExtraHeaders @(
                         @{ key = 'Ocp-Apim-Subscription-Key'; value = '{{adminSubscriptionKey}}' }
                     ))
             )
@@ -405,6 +454,8 @@ End-to-end tests for the **$EnvironmentLabel** stack through Azure APIM.
 ## Suggested order
 
 Run folder **1** → **2** (all coupon previews) → **3** (checkout scenarios). Use Collection Runner.
+
+Folder **4** is skipped automatically unless you set **adminSubscriptionKey**.
 
 **LIMITED1** preview may return **Rejected** on production after the global cap is consumed.
 
