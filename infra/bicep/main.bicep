@@ -58,6 +58,9 @@ param couponApiClientId string = ''
 @description('Seeds the deterministic policy set as the Coupon Service starts (AC-9.5, AC-9.6). The policy store is per-instance, so seeding belongs with the instance rather than in a pipeline step.')
 param seedPoliciesOnStartup bool = true
 
+@description('Expose Scalar, ReDoc, and /openapi on API hosts. True for develop CD only; production (main) leaves this false.')
+param enableApiDocumentation bool = false
+
 @description('Allowed SPA origin for APIM CORS on the customer product.')
 param spaOrigin string = 'https://localhost:5173'
 
@@ -165,6 +168,7 @@ module containerapps 'modules/containerapps.bicep' = if (hostingMode == 'contain
     couponApiClientId: couponApiClientId
     couponServiceScope: couponServiceScope
     seedPoliciesOnStartup: seedPoliciesOnStartup
+    enableApiDocumentation: enableApiDocumentation
     tags: tags
   }
 }
@@ -185,6 +189,7 @@ module appservice 'modules/appservice.bicep' = if (hostingMode == 'appService') 
     couponApiClientId: couponApiClientId
     couponServiceScope: couponServiceScope
     seedPoliciesOnStartup: seedPoliciesOnStartup
+    enableApiDocumentation: enableApiDocumentation
     tags: tags
   }
 }

@@ -95,7 +95,7 @@ $wifSp = az ad sp show --id <service-connection-appId> --query id -o tsv
 ./scripts/setup-entra-app.ps1 -AdminPrincipalId $wifSp
 ```
 
-It creates the application with identifier URI `api://coupon-service`, app roles `Coupon.Admin` and `Coupon.Redeem`, the resource service principal, and the `Coupon.Admin` assignment CD Seed needs. Pass `-RedeemPrincipalId` with the Order API managed identity's object id after the first provision to complete **AC-7.7**.
+It creates the application with identifier URI `api://coupon-service`, app roles `Coupon.Admin` and `Coupon.Redeem`, the resource service principal, delegated scope `access_as_user` with Microsoft Azure CLI pre-authorized (so `az account get-access-token --resource api://coupon-service` works for manual testing — see [`docs/testing-deployed-apis.md`](testing-deployed-apis.md)), and the `Coupon.Admin` assignment CD Seed needs. Pass `-RedeemPrincipalId` with the Order API managed identity's object id after the first provision to complete **AC-7.7**.
 
 Two details the script exists to get right:
 

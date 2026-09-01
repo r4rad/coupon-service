@@ -12,10 +12,12 @@
       1. Application `Coupon Service API` with identifier URI $Audience.
       2. App roles `Coupon.Admin` and `Coupon.Redeem` (existing role ids are preserved, so
          assignments already granted keep working).
-      3. The application's service principal, which is the resource side of an assignment.
-      4. `Coupon.Admin` on the pipeline WIF principal, so CD Seed can obtain a real Entra JWT
+      3. Delegated scope `access_as_user` with Microsoft Azure CLI pre-authorized so
+         `az account get-access-token --resource api://coupon-service` works for manual testing.
+      4. The application's service principal, which is the resource side of an assignment.
+      5. `Coupon.Admin` on the pipeline WIF principal, so CD Seed can obtain a real Entra JWT
          instead of relying on the expiring AdminApiBearerToken fallback (AC-9.5, AC-9.6).
-      5. Optionally `Coupon.Redeem` on the Order API managed identity (AC-7.7).
+      6. Optionally `Coupon.Redeem` on the Order API managed identity (AC-7.7).
 
     Requires an `az login` session with rights to create app registrations and write
     appRoleAssignedTo in the target tenant.
@@ -49,6 +51,13 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $graph = 'https://graph.microsoft.com/v1.0'
+
+# Microsoft Azure CLI — pre-authorized so operators can run
+# az account get-access-token --resource api://coupon-service without AADSTS65001.
+$AzureCliAppId = '04b07795-8ddb-461a-bbee-02f9e1bf7b46'
+# Stable scope id: changing it invalidates existing consent and pre-auth links.
+$DelegatedScopeId = '8c29f0b1-5e4a-4d2c-9a1b-7e3c5d8f2a10'
+$DelegatedScopeValue = 'access_as_user'
 
 function Write-Step { param([string]$Message) Write-Host "`n=== $Message" -ForegroundColor Cyan }
 function Write-Info { param([string]$Message) Write-Host "    $Message" -ForegroundColor DarkGray }
@@ -160,6 +169,205 @@ function Get-DesiredAppRoles {
     return $merged
 }
 
+function Get-DesiredApiConfiguration {
+    param($ExistingApi)
+
+    $existingScopes = @()
+    if ($null -ne $ExistingApi -and $null -ne $ExistingApi.oauth2PermissionScopes) {
+        $existingScopes = @($ExistingApi.oauth2PermissionScopes)
+    }
+
+    $scope = $existingScopes | Where-Object { $_.value -eq $DelegatedScopeValue } | Select-Object -First 1
+    $scopeId = if ($scope) { [string]$scope.id } else { $DelegatedScopeId }
+
+    $desiredScope = @{
+        adminConsentDescription = 'Allow the application to access the Coupon Service API on behalf of the signed-in user.'
+        adminConsentDisplayName = 'Access Coupon Service API'
+        id                      = $scopeId
+        isEnabled               = $true
+        type                    = 'User'
+        userConsentDescription  = 'Allow the application to access the Coupon Service API on your behalf.'
+        userConsentDisplayName  = 'Access Coupon Service API'
+        value                   = $DelegatedScopeValue
+    }
+
+    $mergedScopes = @($desiredScope)
+    foreach ($existing in $existingScopes) {
+        if ([string]$existing.value -ne $DelegatedScopeValue) {
+            $mergedScopes += @{
+                adminConsentDescription = [string]$existing.adminConsentDescription
+                adminConsentDisplayName = [string]$existing.adminConsentDisplayName
+                id                      = [string]$existing.id
+                isEnabled               = [bool]$existing.isEnabled
+                type                    = [string]$existing.type
+                userConsentDescription  = [string]$existing.userConsentDescription
+                userConsentDisplayName  = [string]$existing.userConsentDisplayName
+                value                   = [string]$existing.value
+            }
+        }
+    }
+
+    $existingPreAuth = @()
+    if ($null -ne $ExistingApi -and $null -ne $ExistingApi.preAuthorizedApplications) {
+        $existingPreAuth = @($ExistingApi.preAuthorizedApplications)
+    }
+
+    $cliPreAuth = $existingPreAuth | Where-Object { $_.appId -eq $AzureCliAppId } | Select-Object -First 1
+    $mergedPreAuth = @()
+    if ($cliPreAuth) {
+        $permissionIds = @($cliPreAuth.delegatedPermissionIds | ForEach-Object { [string]$_ })
+        if ($permissionIds -notcontains $scopeId) {
+            $permissionIds += $scopeId
+        }
+
+        $mergedPreAuth += @{
+            appId                   = $AzureCliAppId
+            delegatedPermissionIds  = $permissionIds
+        }
+    }
+    else {
+        $mergedPreAuth += @{
+            appId                   = $AzureCliAppId
+            delegatedPermissionIds  = @($scopeId)
+        }
+    }
+
+    foreach ($existing in $existingPreAuth) {
+        if ([string]$existing.appId -ne $AzureCliAppId) {
+            $mergedPreAuth += @{
+                appId                   = [string]$existing.appId
+                delegatedPermissionIds  = @($existing.delegatedPermissionIds | ForEach-Object { [string]$_ })
+            }
+        }
+    }
+
+    return @{
+        requestedAccessTokenVersion = 2
+        oauth2PermissionScopes      = $mergedScopes
+        preAuthorizedApplications   = $mergedPreAuth
+    }
+}
+
+function Test-ApiConfigurationConverged {
+    param($ExistingApi)
+
+    if ($null -eq $ExistingApi) { return $false }
+    if ([int]$ExistingApi.requestedAccessTokenVersion -ne 2) { return $false }
+
+    $scope = @($ExistingApi.oauth2PermissionScopes) |
+        Where-Object { $_.value -eq $DelegatedScopeValue -and $_.isEnabled } |
+        Select-Object -First 1
+    if ($null -eq $scope) { return $false }
+
+    $cliPreAuth = @($ExistingApi.preAuthorizedApplications) |
+        Where-Object { $_.appId -eq $AzureCliAppId } |
+        Select-Object -First 1
+    if ($null -eq $cliPreAuth) { return $false }
+
+    return @($cliPreAuth.delegatedPermissionIds | ForEach-Object { [string]$_ }) -contains [string]$scope.id
+}
+
+function Set-ApiConfiguration {
+    param(
+        [string] $ApplicationObjectId,
+        $ExistingApi
+    )
+
+    if (Test-ApiConfigurationConverged -ExistingApi $ExistingApi) {
+        return Invoke-Graph -Method get -Url "$graph/applications/$ApplicationObjectId"
+    }
+
+    $desiredApi = Get-DesiredApiConfiguration -ExistingApi $ExistingApi
+    $scope = @($desiredApi.oauth2PermissionScopes) |
+        Where-Object { $_.value -eq $DelegatedScopeValue } |
+        Select-Object -First 1
+
+    if ($DryRun) {
+        Write-Info "[dry run] would patch api scopes and Azure CLI pre-authorization."
+        return $ExistingApi
+    }
+
+  # Graph rejects preAuthorizedApplications in the same write when the scope id is new.
+    $scopePatch = @{
+        api = @{
+            requestedAccessTokenVersion = 2
+            oauth2PermissionScopes      = $desiredApi.oauth2PermissionScopes
+        }
+    }
+    Invoke-Graph -Method patch -Url "$graph/applications/$ApplicationObjectId" -Body $scopePatch | Out-Null
+
+    $refreshed = Invoke-Graph -Method get -Url "$graph/applications/$ApplicationObjectId"
+    $scopeId = @($refreshed.api.oauth2PermissionScopes) |
+        Where-Object { $_.value -eq $DelegatedScopeValue } |
+        Select-Object -First 1 -ExpandProperty id
+
+    $preAuthPatch = @{
+        api = @{
+            preAuthorizedApplications = @(
+                @{
+                    appId                  = $AzureCliAppId
+                    delegatedPermissionIds = @([string]$scopeId)
+                }
+            )
+        }
+    }
+
+    $existingOther = @($refreshed.api.preAuthorizedApplications) |
+        Where-Object { $_.appId -ne $AzureCliAppId }
+    foreach ($existing in $existingOther) {
+        $preAuthPatch.api.preAuthorizedApplications += @{
+            appId                  = [string]$existing.appId
+            delegatedPermissionIds = @($existing.delegatedPermissionIds | ForEach-Object { [string]$_ })
+        }
+    }
+
+    Invoke-Graph -Method patch -Url "$graph/applications/$ApplicationObjectId" -Body $preAuthPatch | Out-Null
+    return Invoke-Graph -Method get -Url "$graph/applications/$ApplicationObjectId"
+}
+
+function Grant-AzureCliDelegatedAccess {
+    param(
+        [string] $ResourceSpId
+    )
+
+    $clientFilter = [uri]::EscapeDataString("appId eq '$AzureCliAppId'")
+    $clientSp = Invoke-Graph -Method get -Url "$graph/servicePrincipals?`$filter=$clientFilter"
+    $clientSpId = [string]($clientSp.value | Select-Object -First 1 -ExpandProperty id)
+    if ([string]::IsNullOrWhiteSpace($clientSpId)) {
+        if ($DryRun) {
+            Write-Info "[dry run] would create the Microsoft Azure CLI service principal."
+            return
+        }
+
+        $created = Invoke-Graph -Method post -Url "$graph/servicePrincipals" -Body @{ appId = $AzureCliAppId }
+        $clientSpId = [string]$created.id
+        Write-Info "Created Microsoft Azure CLI service principal $clientSpId."
+    }
+
+    $grantFilter = [uri]::EscapeDataString(
+        "clientId eq '$clientSpId' and resourceId eq '$ResourceSpId' and consentType eq 'AllPrincipals'")
+    $existing = Invoke-Graph -Method get -Url "$graph/oauth2PermissionGrants?`$filter=$grantFilter"
+    $grant = $existing.value | Select-Object -First 1
+    if ($grant -and [string]$grant.scope -match $DelegatedScopeValue) {
+        Write-Info "Tenant-wide Azure CLI consent for $DelegatedScopeValue already granted."
+        return
+    }
+
+    if ($DryRun) {
+        Write-Info "[dry run] would grant tenant-wide Azure CLI consent for $DelegatedScopeValue."
+        return
+    }
+
+    Invoke-Graph -Method post -Url "$graph/oauth2PermissionGrants" -Body @{
+        clientId    = $clientSpId
+        consentType = 'AllPrincipals'
+        principalId = $null
+        resourceId  = $ResourceSpId
+        scope       = $DelegatedScopeValue
+    } | Out-Null
+    Write-Info "Granted tenant-wide Azure CLI consent for $DelegatedScopeValue."
+}
+
 function Grant-AppRole {
     param(
         [string] $ResourceSpId,
@@ -207,25 +415,30 @@ if ($null -eq $app) {
         return
     }
 
+    $initialApi = Get-DesiredApiConfiguration -ExistingApi $null
     $app = Invoke-Graph -Method post -Url "$graph/applications" -Body @{
         displayName     = $DisplayName
         signInAudience  = 'AzureADMyOrg'
         identifierUris  = @($Audience)
         appRoles        = $appRoles
-        # The API validates a single exact issuer of https://login.microsoftonline.com/{tid}/v2.0
-        # (main.bicep sets jwtIssuer = jwtAuthority). Version 1 tokens carry
-        # iss = https://sts.windows.net/{tid}/ and would fail that check with an opaque 401.
-        api             = @{ requestedAccessTokenVersion = 2 }
+        api             = @{
+            requestedAccessTokenVersion = 2
+            oauth2PermissionScopes      = $initialApi.oauth2PermissionScopes
+        }
     }
     Write-Info "Created application $($app.appId) (object $($app.id))."
+    $app = Set-ApiConfiguration -ApplicationObjectId $app.id -ExistingApi $app.api
 }
 else {
     Write-Info "Found application $($app.appId) (object $($app.id))."
 
     $patch = @{}
-    if ([int]$app.api.requestedAccessTokenVersion -ne 2) {
-        $patch['api'] = @{ requestedAccessTokenVersion = 2 }
-        Write-Info 'requestedAccessTokenVersion is not 2; will patch (v1 issuer would fail JwtBearer).'
+    if (-not (Test-ApiConfigurationConverged -ExistingApi $app.api)) {
+        Write-Info "Delegated scope '$DelegatedScopeValue' and/or Azure CLI pre-auth missing; will patch."
+        if (-not $DryRun) {
+            $app = Set-ApiConfiguration -ApplicationObjectId $app.id -ExistingApi $app.api
+            Write-Info 'API scopes and Azure CLI pre-authorization patched.'
+        }
     }
 
     $appRoles = Get-DesiredAppRoles -ExistingRoles @($app.appRoles)
@@ -268,6 +481,8 @@ else {
     Write-Info "Found service principal $($sp.id)."
 }
 
+Grant-AzureCliDelegatedAccess -ResourceSpId $sp.id
+
 Write-Step 'App role assignments'
 
 $roleIds = @{}
@@ -298,3 +513,4 @@ Write-Host ''
 # need both values. A stale couponApiClientId presents as a 401 with a valid-looking token.
 Write-Host "  Set 'param couponApiClientId' to $($app.appId) in infra/bicep/main.*.bicepparam."
 Write-Host "  Verify with: az account get-access-token --resource $Audience"
+Write-Host "  (Do not use az login --scope; login normally, then run get-access-token with --resource.)"

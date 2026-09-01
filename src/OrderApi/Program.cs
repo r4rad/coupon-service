@@ -60,7 +60,7 @@ builder.Services.AddOpenApi(options =>
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
+if (OpenApiUiExtensions.IsApiDocumentationEnabled(app.Environment, app.Configuration))
 {
     app.MapApiDocumentation("Order API");
 }

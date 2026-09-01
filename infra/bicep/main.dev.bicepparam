@@ -13,4 +13,5 @@ param apimPublisherEmail = 'noreply@example.com'
 param apimPublisherName = 'Coupon Demo'
 param couponApiAudience = 'api://coupon-service'
 param couponApiClientId = '189703ee-da8c-4fa4-8c0d-a53f193283f4'
+param enableApiDocumentation = true
 param spaOrigin = 'https://localhost:5173'

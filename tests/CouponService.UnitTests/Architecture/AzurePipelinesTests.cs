@@ -311,6 +311,9 @@ public sealed class AzurePipelinesTests
         Assert.Contains("'Application', 'User'", script, StringComparison.Ordinal);
         Assert.Contains("Coupon.Admin", script, StringComparison.Ordinal);
         Assert.Contains("Coupon.Redeem", script, StringComparison.Ordinal);
+        Assert.Contains("access_as_user", script, StringComparison.Ordinal);
+        Assert.Contains("04b07795-8ddb-461a-bbee-02f9e1bf7b46", script, StringComparison.Ordinal);
+        Assert.Contains("preAuthorizedApplications", script, StringComparison.Ordinal);
         Assert.Contains("appRoleAssignedTo", script, StringComparison.Ordinal);
         Assert.Contains("api://coupon-service", script, StringComparison.Ordinal);
         Assert.DoesNotContain("clientSecret", script, StringComparison.OrdinalIgnoreCase);

@@ -38,6 +38,9 @@ param couponServiceScope string
 @description('Seeds the deterministic policy set as the Coupon Service starts (AC-9.5, AC-9.6).')
 param seedPoliciesOnStartup bool = true
 
+@description('Expose Scalar, ReDoc, and /openapi on API hosts. Off in production.')
+param enableApiDocumentation bool = false
+
 @description('Resource tags. Must include project, env and owner.')
 param tags object
 
@@ -106,6 +109,10 @@ resource couponApp 'Microsoft.Web/sites@2023-12-01' = {
           name: 'Seeding__Enabled'
           value: string(seedPoliciesOnStartup)
         }
+        {
+          name: 'ApiDocumentation__Enabled'
+          value: string(enableApiDocumentation)
+        }
       ]
     }
   }
@@ -152,6 +159,10 @@ resource orderApp 'Microsoft.Web/sites@2023-12-01' = {
         {
           name: 'OrderApi__CouponServiceScope'
           value: couponServiceScope
+        }
+        {
+          name: 'ApiDocumentation__Enabled'
+          value: string(enableApiDocumentation)
         }
       ]
     }

@@ -128,6 +128,45 @@ public sealed class BicepInfrastructureTests
     }
 
     [Fact]
+    public void Api_documentation_is_enabled_for_develop_parameters_only()
+    {
+        var dev = Read("main.dev.bicepparam");
+        var prod = Read("main.prod.bicepparam");
+        Assert.Contains("enableApiDocumentation = true", dev, StringComparison.Ordinal);
+        Assert.DoesNotContain("enableApiDocumentation", prod, StringComparison.Ordinal);
+
+        var main = Read("main.bicep");
+        Assert.Contains("param enableApiDocumentation bool = false", main, StringComparison.Ordinal);
+        Assert.Contains("enableApiDocumentation: enableApiDocumentation", main, StringComparison.Ordinal);
+
+        var containerApps = Read(Path.Combine("modules", "containerapps.bicep"));
+        Assert.Contains("ApiDocumentation__Enabled", containerApps, StringComparison.Ordinal);
+        Assert.Contains("param enableApiDocumentation bool = false", containerApps, StringComparison.Ordinal);
+
+        var repoRoot = RepositoryRoot.Find();
+        foreach (var relativePath in new[]
+                 {
+                     Path.Combine("src", "CouponService.Api", "Program.cs"),
+                     Path.Combine("src", "OrderApi", "Program.cs"),
+                 })
+        {
+            var content = File.ReadAllText(Path.Combine(repoRoot, relativePath));
+            Assert.Contains("IsApiDocumentationEnabled", content, StringComparison.Ordinal);
+        }
+
+        foreach (var relativePath in new[]
+                 {
+                     Path.Combine("src", "CouponService.Api", "OpenApi", "OpenApiUiExtensions.cs"),
+                     Path.Combine("src", "OrderApi", "OpenApi", "OpenApiUiExtensions.cs"),
+                 })
+        {
+            var content = File.ReadAllText(Path.Combine(repoRoot, relativePath));
+            Assert.Contains("IsApiDocumentationEnabled", content, StringComparison.Ordinal);
+            Assert.Contains("ApiDocumentation:Enabled", content, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public void Container_apps_are_provisioned_with_a_public_placeholder_image()
     {
         // P-11 — first deploy into an empty RG must not deadlock on an empty ACR.
