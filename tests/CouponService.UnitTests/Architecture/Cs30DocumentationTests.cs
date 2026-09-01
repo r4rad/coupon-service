@@ -19,6 +19,7 @@ public sealed class Cs30DocumentationTests
         Assert.Contains("docs/deployment.md", readme, StringComparison.Ordinal);
         Assert.Contains("docs/authentication.md", readme, StringComparison.Ordinal);
         Assert.Contains("docs/pipeline-prerequisites.md", readme, StringComparison.Ordinal);
+        Assert.Contains("docs/testing-deployed-apis.md", readme, StringComparison.Ordinal);
         Assert.Contains("docs/assumptions.md", readme, StringComparison.Ordinal);
         Assert.Contains("docs/solution-architecture.md", readme, StringComparison.Ordinal);
     }
