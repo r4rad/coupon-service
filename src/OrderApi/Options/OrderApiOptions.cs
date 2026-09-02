@@ -22,8 +22,8 @@ public sealed class OrderApiOptions
     public string CouponServiceResource { get; init; } = "api://coupon-service";
 
     /// <summary>
-    /// OAuth scope passed to the managed-identity endpoint so <c>Coupon.Redeem</c> app roles are
-    /// included in the access token (AC-7.7).
+    /// OAuth scope for delegated/user token requests (<c>api://coupon-service/.default</c>).
+    /// Not passed to the managed-identity endpoint — see <see cref="CouponServiceResource"/>.
     /// </summary>
     public string CouponServiceScope { get; init; } = "api://coupon-service/.default";
 

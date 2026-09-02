@@ -22,7 +22,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CouponService.Application\CouponService.Application.csproj" />
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>CouponService.ApiTests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\CouponService.Infrastructure\CouponService.Infrastructure.csproj" />
   </ItemGroup>
 

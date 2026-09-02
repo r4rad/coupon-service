@@ -26,6 +26,9 @@ param orderIdentityId string
 @description('User-assigned identity client id for the order API.')
 param orderIdentityClientId string
 
+@description('User-assigned identity service principal object id for the order API (AC-7.7).')
+param orderIdentityPrincipalId string
+
 @description('Public placeholder image so first deploy into an empty RG does not deadlock on an empty ACR (P-11).')
 param placeholderImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
 
@@ -147,6 +150,10 @@ resource couponApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'Authentication__TestToken__Enabled'
               value: 'false'
+            }
+            {
+              name: 'Authentication__Jwt__TrustedRedeemPrincipalIds__0'
+              value: orderIdentityPrincipalId
             }
             {
               name: 'Seeding__Enabled'

@@ -79,11 +79,13 @@ public sealed class ManagedIdentityCouponServiceTokenProvider(
 
     private async Task<IdentityTokenResponse> RequestTokenAsync(CancellationToken cancellationToken)
     {
-        var scope = options.Value.CouponServiceScope;
-        if (string.IsNullOrWhiteSpace(scope))
+        // Container Apps / App Service identity endpoints accept `resource`, not `scope`.
+        // Use the Application ID URI (no /.default suffix — that form is for OAuth scope flows).
+        var resource = options.Value.CouponServiceResource;
+        if (string.IsNullOrWhiteSpace(resource))
         {
             throw new InvalidOperationException(
-                "OrderApi:CouponServiceScope must be configured when UseManagedIdentity is true.");
+                "OrderApi:CouponServiceResource must be configured when UseManagedIdentity is true.");
         }
 
         var clientId = Environment.GetEnvironmentVariable("AZURE_CLIENT_ID");
@@ -92,8 +94,8 @@ public sealed class ManagedIdentityCouponServiceTokenProvider(
 
         using var request = string.IsNullOrWhiteSpace(identityEndpoint)
             || string.IsNullOrWhiteSpace(identityHeader)
-            ? CreateImdsRequest(scope, clientId)
-            : CreateAppServiceRequest(identityEndpoint, identityHeader, scope, clientId);
+            ? CreateImdsRequest(resource, clientId)
+            : CreateAppServiceRequest(identityEndpoint, identityHeader, resource, clientId);
 
         var client = httpClientFactory.CreateClient(HttpClientName);
         using var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
@@ -118,13 +120,13 @@ public sealed class ManagedIdentityCouponServiceTokenProvider(
     private static HttpRequestMessage CreateAppServiceRequest(
         string identityEndpoint,
         string identityHeader,
-        string scope,
+        string resource,
         string? clientId)
     {
         var uri = AppendQuery(
             identityEndpoint,
             ("api-version", "2019-08-01"),
-            ("scope", scope),
+            ("resource", resource),
             string.IsNullOrWhiteSpace(clientId) ? null : ("client_id", clientId));
 
         var request = new HttpRequestMessage(HttpMethod.Get, uri);
@@ -132,12 +134,12 @@ public sealed class ManagedIdentityCouponServiceTokenProvider(
         return request;
     }
 
-    private static HttpRequestMessage CreateImdsRequest(string scope, string? clientId)
+    private static HttpRequestMessage CreateImdsRequest(string resource, string? clientId)
     {
         var uri = AppendQuery(
             "http://169.254.169.254/metadata/identity/oauth2/token",
             ("api-version", "2018-02-01"),
-            ("scope", scope),
+            ("resource", resource),
             string.IsNullOrWhiteSpace(clientId) ? null : ("client_id", clientId));
 
         var request = new HttpRequestMessage(HttpMethod.Get, uri);

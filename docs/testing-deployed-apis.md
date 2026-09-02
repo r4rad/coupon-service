@@ -204,9 +204,9 @@ Run folders top to bottom:
 | Folder | Auth | What it proves |
 |--------|------|----------------|
 | **1 Health** | None | Liveness and startup seed |
-| **2 Coupons** | Bearer | SAVE10 preview applied; OLDCODE rejected (HTTP 200) |
-| **3 Orders** | Bearer | Catalog; place order (saves `orderId`); get order |
-| **4 Admin** | Bearer + subscription key | Optional — list policies, manifest |
+| **2 Coupons — all seeded codes** | Bearer | Preview for SAVE10, FLAT5, VEGGIE15, BOGO, EITHER, OLDCODE (rejected), LIMITED1 |
+| **3 Orders — checkout by coupon** | Bearer | Catalog; place order with SAVE10, FLAT5, BOGO, EITHER; get order |
+| **4 Admin** | Bearer + subscription key | Optional — skipped automatically when `adminSubscriptionKey` is empty |
 
 ### Regenerate collections
 
@@ -242,9 +242,11 @@ Loaded at startup in every deployed environment (`src/CouponService.Api/Seeding/
 |------|-----------|
 | `SAVE10` | 10% off |
 | `FLAT5` | €5 off when subtotal ≥ €20 |
-| `VEGGIE15` | 15% off vegetarian lines |
+| `VEGGIE15` | 15% off vegetarian lines (cap €10); preview cart must use category `Vegetarian` |
+| `BOGO` | Second eligible line free when quantity ≥ 2 |
+| `EITHER` | Best of 15% or €5 flat |
 | `OLDCODE` | Rejected — expired |
-| `LIMITED1` | Rejected after global cap |
+| `LIMITED1` | Applied until global cap of 1 is consumed; preview may show **Rejected** on prod |
 
 ---
 
@@ -268,7 +270,7 @@ Loaded at startup in every deployed environment (`src/CouponService.Api/Seeding/
 | **404** on preview | URL missing `/coupons` prefix before `/v1/...` |
 | Preview **200** + `Rejected` | Business rule (try `SAVE10` with quantity 2 × €20) |
 | **400** on place order (`couponPolicy`) | Order API serializes `couponPolicy` as an integer enum (`0` = allow without discount, `1` = require discount) — omit the field to use the default |
-| Place order **500** with `couponCode` | Order API → Coupon Service reserve returned 403 — assign `Coupon.Redeem` to the Order API identity and ensure the app requests `api://coupon-service/.default` (not `resource=`) for the MI token |
+| Place order **500** with `couponCode` | Order API MI token failed — assign `Coupon.Redeem`, then ensure the identity endpoint is called with `resource=api://coupon-service` (not `scope=`, and not `resource=…/.default`; Container Apps rejects both bad forms) |
 | Place order fails (other) | `Coupon.Redeem` not assigned to Order API identity |
 | Admin **401/403** | Missing `Coupon.Admin` and/or APIM admin subscription key |
 | `consent_required` on token | Re-run `setup-entra-app.ps1` |

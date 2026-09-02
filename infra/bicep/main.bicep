@@ -161,6 +161,7 @@ module containerapps 'modules/containerapps.bicep' = if (hostingMode == 'contain
     couponIdentityClientId: identity.outputs.couponIdentityClientId
     orderIdentityId: identity.outputs.orderIdentityId
     orderIdentityClientId: identity.outputs.orderIdentityClientId
+    orderIdentityPrincipalId: identity.outputs.orderIdentityPrincipalId
     placeholderImage: placeholderImage
     acrLoginServer: acr.outputs.acrLoginServer
     jwtAuthority: jwtAuthority
@@ -184,6 +185,7 @@ module appservice 'modules/appservice.bicep' = if (hostingMode == 'appService') 
     couponIdentityClientId: identity.outputs.couponIdentityClientId
     orderIdentityId: identity.outputs.orderIdentityId
     orderIdentityClientId: identity.outputs.orderIdentityClientId
+    orderIdentityPrincipalId: identity.outputs.orderIdentityPrincipalId
     jwtAuthority: jwtAuthority
     couponApiAudience: couponApiAudience
     couponApiClientId: couponApiClientId

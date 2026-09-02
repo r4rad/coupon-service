@@ -115,14 +115,15 @@ public sealed class EntraApimManagedIdentityTests
         Assert.Contains("UseManagedIdentity", options, StringComparison.Ordinal);
         Assert.Contains("CouponServiceResource", options, StringComparison.Ordinal);
         Assert.Contains("CouponServiceScope", options, StringComparison.Ordinal);
-        Assert.Contains("\"scope\", scope", managedIdentityBody, StringComparison.Ordinal);
-        Assert.DoesNotContain("(\"resource\", resource)", managedIdentityBody, StringComparison.Ordinal);
+        Assert.Contains("\"resource\", resource", managedIdentityBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("(\"scope\",", managedIdentityBody, StringComparison.Ordinal);
 
         var containerApps = Read(Path.Combine("infra", "bicep", "modules", "containerapps.bicep"));
         Assert.Contains("OrderApi__UseManagedIdentity", containerApps, StringComparison.Ordinal);
         Assert.Contains("value: 'true'", containerApps, StringComparison.Ordinal);
         Assert.Contains("OrderApi__CouponServiceResource", containerApps, StringComparison.Ordinal);
         Assert.Contains("OrderApi__CouponServiceScope", containerApps, StringComparison.Ordinal);
+        Assert.Contains("Authentication__Jwt__TrustedRedeemPrincipalIds__0", containerApps, StringComparison.Ordinal);
         Assert.DoesNotContain("OrderApi__CouponServiceToken", containerApps, StringComparison.Ordinal);
     }
 

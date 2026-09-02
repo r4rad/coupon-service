@@ -28,6 +28,12 @@ public sealed class JwtBearerOptions
 
     public string Issuer { get; init; } = "https://login.microsoftonline.com/{tenant-id}/v2.0";
 
+    /// <summary>
+    /// Service principal object ids allowed to call reservation routes when Entra omits the
+    /// <c>roles</c> claim on managed-identity tokens (AC-7.7). App role assignment still required.
+    /// </summary>
+    public string[] TrustedRedeemPrincipalIds { get; init; } = [];
+
     public IReadOnlyCollection<string> ValidAudiences() =>
         new[] { Audience, ClientId }
             .Where(value => !string.IsNullOrWhiteSpace(value))

@@ -52,6 +52,16 @@ internal static class AuthenticationServiceCollectionExtensions
                     ValidAudiences = authOptions.Jwt.ValidAudiences(),
                     RoleClaimType = "roles",
                 };
+                jwtOptions.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = context =>
+                    {
+                        TrustedRedeemPrincipalClaimsTransformation.Apply(
+                            context.Principal,
+                            authOptions.Jwt.TrustedRedeemPrincipalIds);
+                        return Task.CompletedTask;
+                    },
+                };
             });
 
         if (registerTestToken)

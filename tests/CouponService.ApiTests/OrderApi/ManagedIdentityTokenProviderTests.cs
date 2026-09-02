@@ -31,7 +31,7 @@ public sealed class ManagedIdentityTokenProviderTests
                 Options.Create(new OrderApiOptions
                 {
                     UseManagedIdentity = true,
-                    CouponServiceScope = "api://coupon-service/.default",
+                    CouponServiceResource = "api://coupon-service",
                     CouponServiceToken = "must-not-be-used",
                 }),
                 new FixedOrderClock(new DateTimeOffset(2026, 8, 29, 12, 0, 0, TimeSpan.Zero)));
@@ -41,7 +41,9 @@ public sealed class ManagedIdentityTokenProviderTests
             Assert.Equal("mi-access-token", token);
             Assert.NotNull(handler.LastRequest);
             Assert.Equal("test-identity-header", handler.LastRequest!.Headers.GetValues("X-IDENTITY-HEADER").Single());
-            Assert.Contains("scope=api%3A%2F%2Fcoupon-service%2F.default", handler.LastRequest.RequestUri!.Query, StringComparison.Ordinal);
+            Assert.Contains("resource=api%3A%2F%2Fcoupon-service", handler.LastRequest.RequestUri!.Query, StringComparison.Ordinal);
+            Assert.DoesNotContain("%2F.default", handler.LastRequest.RequestUri.Query, StringComparison.Ordinal);
+            Assert.DoesNotContain("scope=", handler.LastRequest.RequestUri.Query, StringComparison.Ordinal);
             Assert.Contains("client_id=order-mi-client-id", handler.LastRequest.RequestUri.Query, StringComparison.Ordinal);
             Assert.DoesNotContain("must-not-be-used", handler.LastRequest.RequestUri.ToString(), StringComparison.Ordinal);
         }
@@ -66,7 +68,7 @@ public sealed class ManagedIdentityTokenProviderTests
         {
             var provider = new ManagedIdentityCouponServiceTokenProvider(
                 factory,
-                Options.Create(new OrderApiOptions { CouponServiceScope = "api://coupon-service/.default" }),
+                Options.Create(new OrderApiOptions { CouponServiceResource = "api://coupon-service" }),
                 new FixedOrderClock(new DateTimeOffset(2026, 8, 29, 12, 0, 0, TimeSpan.Zero)));
 
             Assert.Equal("cached-token", await provider.GetTokenAsync());

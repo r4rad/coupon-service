@@ -60,6 +60,7 @@ Until the role assignment exists, the Coupon Service returns **403** on reservat
 | `entraTenantId` | Bicep (defaults to `tenant().tenantId`) | Deployment tenant; override only for a different IdP |
 | `couponApiAudience` | Bicep param + `Authentication:Jwt:Audience` | `api://coupon-service` |
 | `couponApiClientId` | Bicep param + `Authentication:Jwt:ClientId` | `{coupon-api-client-id}`, printed by `scripts/setup-entra-app.ps1` |
+| `TrustedRedeemPrincipalIds` | Bicep → `Authentication:Jwt:TrustedRedeemPrincipalIds` | Order API managed-identity service principal object id (when Entra omits `roles` on MI tokens) |
 | Customer SPA client ID | this doc / pipeline vars | `{customer-spa-client-id}` |
 | Admin client ID | this doc / pipeline vars | `{admin-client-id}` |
 | Order MI client ID | Bicep output `orderIdentityClientId` | injected as `AZURE_CLIENT_ID` |
@@ -95,8 +96,8 @@ Order API managed-identity hop (**AC-7.7**):
 ```text
 OrderApi__UseManagedIdentity     = true
 OrderApi__CouponServiceBaseUrl   = https://{coupon-app-fqdn}
-OrderApi__CouponServiceResource  = api://coupon-service
-OrderApi__CouponServiceScope     = api://coupon-service/.default   # identity-endpoint scope; app roles appear in the token
+OrderApi__CouponServiceResource  = api://coupon-service   # identity-endpoint `resource` parameter (AC-7.7)
+OrderApi__CouponServiceScope     = api://coupon-service/.default   # delegated token scope only (az CLI / user tokens)
 # OrderApi__CouponServiceToken is NOT set in Azure — no shared secret
 ```
 
